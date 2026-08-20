@@ -107,6 +107,7 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
   - `tpx verify boundaries` → fails if a module references another module's `.Domain`/`.Infrastructure`.
   - `tpx test <module> --integration` → Testcontainers, real Postgres.
   - `tpx contract lint` → OpenAPI valid + no breaking change vs `main` (use `oasdiff`).
+    - **Deferred, revisit once Auth module exists:** also diff controller route attributes against contract paths, failing lint if an endpoint has no matching contract entry. Closes the gap where a dev/agent writes a handler with zero contract coverage — the `new-endpoint` skill documents contract-first but doesn't enforce it mechanically.
   - `tpx gen` → regenerate `shared/clients` from `contracts/` (NSwag for C#, `ng-openapi-gen` for Angular).
   - `tpx worktree new <module>/<feature>` → git worktree + allocated Postgres port + unique `COMPOSE_PROJECT_NAME`.
   - All commands run today but report "nothing found," since no `modules/` or `contracts/` exist yet.
