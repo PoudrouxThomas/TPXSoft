@@ -98,15 +98,19 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
 
 ### 0.1 Repository and verification loop (do this first, nothing else matters until it's fast)
 
-- `git init`, root `.gitignore`, `.editorconfig`, `Directory.Build.props` with `TreatWarningsAsErrors=true` and `Nullable=enable`.
-- `docker-compose.yml`: Postgres 16, with `COMPOSE_PROJECT_NAME` and port read from env (critical for parallel worktrees — see 0.5).
-- `tools/tpx` — a small .NET or Node CLI:
+- [x] `git init`, root `.gitignore`, `.editorconfig`.
+- [ ] `Directory.Build.props` with `TreatWarningsAsErrors=true` and `Nullable=enable` — not done yet.
+- [x] `docker-compose.yml`: Postgres 16, with `COMPOSE_PROJECT_NAME` and port read from env (critical for parallel worktrees — see 0.5).
+- [x] `tools/tpx` — a .NET 9 console CLI (see [tools/tpx/README.md](tools/tpx/README.md)):
   - `tpx verify <module>` → build + unit tests + contract lint. **Hard target: under 60 seconds.**
   - `tpx verify --affected` → maps `git diff` paths to affected modules.
+  - `tpx verify boundaries` → fails if a module references another module's `.Domain`/`.Infrastructure`.
   - `tpx test <module> --integration` → Testcontainers, real Postgres.
   - `tpx contract lint` → OpenAPI valid + no breaking change vs `main` (use `oasdiff`).
   - `tpx gen` → regenerate `shared/clients` from `contracts/` (NSwag for C#, `ng-openapi-gen` for Angular).
-- Install `gh` CLI (missing) and `pnpm`/corepack (missing) — both needed for the PR-based agent workflow.
+  - `tpx worktree new <module>/<feature>` → git worktree + allocated Postgres port + unique `COMPOSE_PROJECT_NAME`.
+  - All commands run today but report "nothing found," since no `modules/` or `contracts/` exist yet.
+- [ ] Install `gh` CLI (missing) and `pnpm`/corepack (missing) — both needed for the PR-based agent workflow.
 
 **This section is the single highest-leverage part of the plan.** Agents that can verify their own work are worth several times agents that cannot; without it, subagents produce plausible-looking code and you spend the savings on review.
 
