@@ -114,11 +114,6 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
 
 **This section is the single highest-leverage part of the plan.** Agents that can verify their own work are worth several times agents that cannot; without it, subagents produce plausible-looking code and you spend the savings on review.
 
-### 0.2 CLAUDE.md hierarchy
-
-- Root `CLAUDE.md` (repo root, alongside `PLAN.md` — not inside `.claude/`): repo map, the `tpx` commands, naming conventions, "never edit `shared/clients` or any `generated/` path — edit the contract and run `tpx gen`", commit/PR conventions. Keep it short; it loads every session.
-- `modules/<name>/CLAUDE.md`: that module's bounded context, its entities, its `tpx verify` line, its known consumers. Loaded only when the agent works there.
-
 ### 0.3 Subagents (`.claude/agents/`)
 
 | Agent | Model | Role |
@@ -179,6 +174,12 @@ Auth's MCP server is built in Phase 1 and becomes the template for `new-module`.
 ### 0.9 Capstone (do after Phase 1, not now)
 
 Bundle `.claude/agents` + `.claude/skills` + hooks into a `tpxsoft` plugin served from your own marketplace repo; validate with `claude plugin eval`. Add a headless `claude -p` PR-review job in CI.
+
+### 0.10 CLAUDE.md hierarchy (do after Phase 1's first module, not now)
+
+Root `CLAUDE.md` already exists and stays short — repo map, `tpx` commands, naming conventions, "never edit `shared/clients` or any `generated/` path", commit/PR conventions. The per-module half needs a module to describe, so write it once Auth exists:
+
+- `modules/auth/CLAUDE.md`: bounded context, entities, its `tpx verify` line, known consumers. Loaded only when an agent works in that module. Becomes the template `new-module` copies for every module after.
 
 ---
 
