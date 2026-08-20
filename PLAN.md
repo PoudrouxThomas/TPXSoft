@@ -99,7 +99,7 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
 ### 0.1 Repository and verification loop (do this first, nothing else matters until it's fast)
 
 - [x] `git init`, root `.gitignore`, `.editorconfig`.
-- [ ] `Directory.Build.props` with `TreatWarningsAsErrors=true` and `Nullable=enable` — not done yet.
+- [x] `Directory.Build.props` with `TreatWarningsAsErrors=true` and `Nullable=enable`.
 - [x] `docker-compose.yml`: Postgres 16, with `COMPOSE_PROJECT_NAME` and port read from env (critical for parallel worktrees — see 0.5).
 - [x] `tools/tpx` — a .NET 9 console CLI (see [tools/tpx/README.md](tools/tpx/README.md)):
   - `tpx verify <module>` → build + unit tests + contract lint. **Hard target: under 60 seconds.**
@@ -110,7 +110,7 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
   - `tpx gen` → regenerate `shared/clients` from `contracts/` (NSwag for C#, `ng-openapi-gen` for Angular).
   - `tpx worktree new <module>/<feature>` → git worktree + allocated Postgres port + unique `COMPOSE_PROJECT_NAME`.
   - All commands run today but report "nothing found," since no `modules/` or `contracts/` exist yet.
-- [ ] Install `gh` CLI (missing) and `pnpm`/corepack (missing) — both needed for the PR-based agent workflow.
+- [x] Install `gh` CLI (missing) and `pnpm`/corepack (missing) — both needed for the PR-based agent workflow.
 
 **This section is the single highest-leverage part of the plan.** Agents that can verify their own work are worth several times agents that cannot; without it, subagents produce plausible-looking code and you spend the savings on review.
 
@@ -208,10 +208,6 @@ Phase 0 is complete when all of the following pass from a clean clone:
 9. The Friday `/schedule` routine executes once on demand and writes a review + `GOALS.md` progress summary.
 
 If item 1 exceeds 60 seconds, stop and fix the loop before writing any Phase 1 feature code.
-
-## Open items to confirm before Phase 1
-
-- Install `gh` and `pnpm`/corepack — both currently missing. `gh` is required by verification item 8 (the PR-based agent workflow).
 
 ---
 
