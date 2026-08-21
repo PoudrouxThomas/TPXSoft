@@ -115,7 +115,7 @@ Boundary enforcement: a `tpx verify boundaries` check fails the build if a modul
 
 **This section is the single highest-leverage part of the plan.** Agents that can verify their own work are worth several times agents that cannot; without it, subagents produce plausible-looking code and you spend the savings on review.
 
-### 0.3 Subagents (`.claude/agents/`)
+### 0.3 Subagents (`.claude/agents/`) — done
 
 | Agent | Model | Role |
 |---|---|---|
@@ -129,7 +129,7 @@ Reuse what's already installed rather than duplicating: `caveman:cavecrew-invest
 
 Async usage: launch `dotnet-implementer` and `angular-implementer` in the background on independent worktrees; poll nothing — the harness notifies on completion.
 
-### 0.4 Project skills (`.claude/skills/`)
+### 0.4 Project skills (`.claude/skills/`) — done
 
 - `new-module` — scaffolds the full module tree above, its `.sln`, its CI job, its `CLAUDE.md`, an empty contract, and its MCP server; registers it in `.mcp.json` and `CODEOWNERS`.
 - `new-endpoint` — contract-first: edit `contracts/<m>.vN.yaml` → `tpx gen` → implement handler → write test → `tpx verify`.
@@ -138,23 +138,22 @@ Async usage: launch `dotnet-implementer` and `angular-implementer` in the backgr
 
 Each is a short procedure, not an essay — that is the only way a skill pays back its own token cost.
 
-### 0.5 Hooks (`.claude/settings.json`, project scope)
+### 0.5 Hooks (`.claude/settings.json`, project scope) — done
 
 - Keep the existing global `rtk hook claude` PreToolUse on Bash.
-- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction.
-- PostToolUse on Edit/Write of `**/*.cs` → `dotnet build` that project only.
-- PostToolUse on Edit/Write of `**/*.ts` → `tsc --noEmit` / lint that Angular project.
-- Stop hook → `tpx verify --affected`.
+- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction. (`block-generated.ps1`)
+- PostToolUse on Edit/Write of touched project → narrow build/lint check. (`verify-on-save.ps1`)
+- Stop hook → `tpx verify --affected`. (`stop-verify.ps1`)
 
 Hooks cost zero tokens and catch agent errors at the moment they happen, which is the cheapest possible point.
 
-### 0.6 Worktrees
+### 0.6 Worktrees — done
 
-`tpx worktree new <module>/<feature>` creates the worktree **and** allocates it a port offset plus a unique `COMPOSE_PROJECT_NAME`, writing them into the worktree's `.env`. Port collision between concurrent integration-test runs is the failure that kills parallel worktree agents; solving it up front is what makes asynchronous subagents actually usable.
+`tpx worktree new <module>/<feature>` creates the worktree **and** allocates it a port offset plus a unique `COMPOSE_PROJECT_NAME`, writing them into the worktree's `.env`. Port state is kept in the shared git dir (`git rev-parse --git-common-dir`), not the per-worktree checkout, so allocation is consistent across worktrees. Port collision between concurrent integration-test runs is the failure that kills parallel worktree agents; solving it up front is what makes asynchronous subagents actually usable.
 
 `.claude/` lives at the repo root and is shared by all worktrees automatically.
 
-### 0.7 MCP servers
+### 0.7 MCP servers — deferred until Auth module exists
 
 One per module, C# `ModelContextProtocol` SDK, stdio transport, registered in root `.mcp.json` so every session and worktree picks them up. Tool surface per module:
 
@@ -166,11 +165,11 @@ One per module, C# `ModelContextProtocol` SDK, stdio transport, registered in ro
 
 Auth's MCP server is built in Phase 1 and becomes the template for `new-module`.
 
-### 0.8 Loops, schedules, and goal tracking
+### 0.8 Loops, schedules, and goal tracking — schedule live, GOALS.md pending
 
-- **`/schedule`** — Friday 18:00 cloud routine: `/code-review` over the week's merges, plus `tpx contract lint` drift check, plus a `GOALS.md` progress report. This is the "Friday review with leftover tokens" idea, correctly implemented as cron rather than `/loop`.
-- **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green."
-- **Goal tracking** — a project skill `tpx-goal` that reads and updates `GOALS.md`: one milestone per section, each with machine-checkable acceptance criteria (`tpx verify auth` green, contract covers N endpoints, integration coverage above X). It reports progress at session start and inside the Friday routine. Machine-checkable is the important part — a goal an agent can evaluate is a goal an agent can be held to.
+- **`/schedule`** — Friday 18:00 cloud routine is created: `/code-review` over the week's merges, plus `tpx contract lint` drift check, plus a `GOALS.md` progress report. Lives in Claude Code's own scheduler (cron), not as a file in this repo — nothing under `.claude/` to commit for it. First run will fire today at 18:00.
+- **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green." Not yet used — no contract to iterate against until Auth exists.
+- **Goal tracking** — a project skill `tpx-goal` that reads and updates `GOALS.md`: one milestone per section, each with machine-checkable acceptance criteria (`tpx verify auth` green, contract covers N endpoints, integration coverage above X). It reports progress at session start and inside the Friday routine. Machine-checkable is the important part — a goal an agent can evaluate is a goal an agent can be held to. Not built yet — `GOALS.md` gets its first content either from the Friday routine's first run or when Auth work starts, whichever comes first.
 
 ### 0.9 Capstone (do after Phase 1, not now)
 

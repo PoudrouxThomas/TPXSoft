@@ -28,7 +28,7 @@ Rather than every agent, hook, or skill knowing the details of `dotnet build`, `
 - `contract-guardian` runs `tpx contract lint` when reviewing a contract diff.
 - A session or skill runs `tpx worktree new <module>/<feature>` before starting parallel work.
 
-**Hooks** (PLAN.md §0.5 — not implemented yet, listed here for context):
+**Hooks** (PLAN.md §0.5 — wired in `.claude/settings.json`):
 - A **Stop hook** → `tpx verify --affected`, firing automatically at the end of every session regardless of whether the agent remembered to self-check.
 - **PostToolUse hooks** on `.cs`/`.ts` edits → narrower, faster checks on just the touched project, catching a broken edit the moment it happens.
 - A **PreToolUse hook** blocks edits under `shared/clients/**` or `**/generated/**`, forcing contract-first discipline mechanically (the only legitimate way those files change is `tpx gen`).
@@ -42,7 +42,7 @@ The split matters: hooks are a backstop that fires no matter what the agent does
 
 ## Current status
 
-No modules or contracts exist in the repo yet, so today every command correctly reports "nothing found" rather than faking success. They start doing real work once the Auth module (Phase 1) exists. Hooks (§0.5) are not wired up yet — this CLI is just the piece they will call.
+No modules or contracts exist in the repo yet, so today every command correctly reports "nothing found" rather than faking success. They start doing real work once the Auth module (Phase 1) exists. `tpx worktree new` already does real port/`COMPOSE_PROJECT_NAME` allocation, since that needs no module or contract to exist.
 
 ## Running it
 
