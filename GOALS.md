@@ -14,8 +14,9 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
 - [x] `docker-compose.yml`: Postgres 16, `COMPOSE_PROJECT_NAME`/port read from env
 - [x] `tools/tpx` CLI implements all seven commands (`verify <module>`, `verify --affected`,
       `verify boundaries`, `test <module> --integration`, `contract lint`, `gen`,
-      `worktree new <module>/<feature>`) — confirmed by reading `Program.cs` and the
-      command handlers
+      `worktree new <module>/<feature>`) — builds clean and runs; `contract lint`,
+      `verify boundaries` and `verify --affected` each executed and exited 0 with the
+      documented "nothing found" output
 - [x] `gh` and `pnpm` installed (per PLAN.md 0.1 checklist; `pnpm` confirmed present)
 
 ### 0.3 Subagents (`.claude/agents/`)
@@ -35,12 +36,23 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
 
 ### 0.5 Hooks (`.claude/settings.json`, project scope)
 
+All four are written and wired in `settings.json`. None of them **fires on Linux**: every
+hook command is `pwsh -NoProfile -File .claude/hooks/*.ps1`, and `pwsh` is not present in
+a Linux cloud session (`pwsh: command not found`). They work on the Windows dev machine
+only, so the Stop-hook backstop in particular is absent exactly where an unattended agent
+runs. Marked done-but-qualified rather than unchecked, since the gap is portability, not
+absence.
+
 - [x] Global `rtk hook claude` PreToolUse on Bash, copied into project settings
 - [x] PreToolUse on Edit/Write blocking `**/clients/**` and `**/generated/**`
-      (`.claude/hooks/block-generated.ps1`)
+      (`.claude/hooks/block-generated.ps1`) — Windows only
 - [x] PostToolUse on Edit/Write running build/lint for the touched project
-      (`.claude/hooks/verify-on-save.ps1`)
+      (`.claude/hooks/verify-on-save.ps1`) — Windows only
 - [x] Stop hook running `tpx verify --affected` (`.claude/hooks/stop-verify.ps1`)
+      — Windows only
+- [ ] Hooks run on Linux as well as Windows — blocked: needs either `pwsh` installed in
+      the cloud environment's setup script, or the three `.ps1` scripts ported to POSIX
+      shell (or a cross-platform runner) so the same hooks fire in both places
 
 ### 0.6 Worktrees
 
