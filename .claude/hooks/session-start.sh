@@ -39,4 +39,15 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     } >> "$CLAUDE_ENV_FILE"
 fi
 
+# .mcp.json launches each module's MCP server as a prebuilt DLL via
+# `dotnet exec` (not `dotnet run`, which rebuilds -- and lock-contends with
+# `tpx verify` -- on every session start). Build it here so the binary exists
+# before the client tries to connect. Non-fatal: a stale/missing binary just
+# means that module's MCP tools aren't available this session.
+AUTH_MCP_PROJ="$PROJECT_DIR/modules/auth/src/TPXSoft.Auth.Mcp/TPXSoft.Auth.Mcp.csproj"
+if [ -f "$AUTH_MCP_PROJ" ]; then
+    dotnet build "$AUTH_MCP_PROJ" --nologo -v quiet >&2 || \
+        echo "session-start: TPXSoft.Auth.Mcp build failed, tpxsoft-auth MCP server may not connect" >&2
+fi
+
 exit 0

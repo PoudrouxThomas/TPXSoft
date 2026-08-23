@@ -2,7 +2,7 @@
   "mcpServers": {
     "tpxsoft-auth": {
       "command": "dotnet",
-      "args": ["run", "--project", "modules/auth/src/TPXSoft.Auth.Mcp/TPXSoft.Auth.Mcp.csproj"]
+      "args": ["exec", "${CLAUDE_PROJECT_DIR}/modules/auth/src/TPXSoft.Auth.Mcp/bin/Debug/net9.0/TPXSoft.Auth.Mcp.dll"]
     }
   }
 }
