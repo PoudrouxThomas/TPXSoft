@@ -1,4 +1,15 @@
-// Placeholder stdio MCP server. Tool surface (get_openapi, list_endpoints,
-// describe_entity, find_consumers, run_tests, get_migrations_status) is
-// added by the mcp-expose skill once contracts/auth.v1.yaml has real content.
-Console.Error.WriteLine("TPXSoft.Auth.Mcp: not yet implemented — see the mcp-expose skill.");
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+// Stdio is the transport; stdout is reserved for MCP protocol frames, so logs go to stderr.
+builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+
+builder.Services
+    .AddMcpServer()
+    .WithStdioServerTransport()
+    .WithToolsFromAssembly();
+
+await builder.Build().RunAsync();
