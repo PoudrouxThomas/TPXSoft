@@ -206,9 +206,11 @@ Auth's MCP server (`modules/auth/src/TPXSoft.Auth.Mcp`) is built and registered 
 - **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green." Now usable — `contracts/auth.v1.yaml` exists — but not yet actually invoked.
 - **Goal tracking** — `GOALS.md` exists (written by the Friday routine's first run) with milestone acceptance criteria. `.claude/skills/tpx-goal` re-verifies each checkbox against real repo state (files, `tpx verify`/`tpx contract lint` output, agent/skill/hook presence) rather than trusting a prior run's claim, flips only what evidence disagrees with, and reports a progress summary — invoked on request, not a hook.
 
-### 0.9 Capstone (do after Phase 1, not now)
+### 0.9 Capstone — partly done, local-only
 
-Bundle `.claude/agents` + `.claude/skills` + hooks into a `tpxsoft` plugin served from your own marketplace repo; validate with `claude plugin eval`. Add a headless `claude -p` PR-review job in CI.
+Bundle `.claude/agents` + `.claude/skills` + hooks into a `tpxsoft` plugin served from a marketplace: `plugin/marketplace/` (`.claude-plugin/marketplace.json`) lists `plugin/marketplace/plugins/tpxsoft/` (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}`). Kept local per user decision (demo project, no remote publishing) — no separate GitHub marketplace repo. `claude plugin validate` passes; `/plugin marketplace add ./plugin/marketplace` + `/plugin install tpxsoft@tpxsoft-marketplace` installs and uninstalls cleanly (verified, then removed again). `claude plugin eval` is early-access and gated on this account (exit 1, "currently in early access") — `validate` is the working gate instead. `plugin/marketplace/plugins/tpxsoft/` is a hand-copied bundle of `.claude/agents`, `.claude/skills`, `.claude/settings.json`'s hooks, and `.claude/hooks/session-start.sh` — no sync script, re-copy by hand when those change.
+
+**Dropped by user decision:** the headless `claude -p` PR-review CI job. It would run on GitHub's cloud runner (not local), which needs its own `ANTHROPIC_API_KEY` — pay-as-you-go, no free tier — to call Claude at all. User declined the cost; not built.
 
 ### 0.10 CLAUDE.md hierarchy — done (Auth)
 

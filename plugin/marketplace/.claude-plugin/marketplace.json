@@ -1,0 +1,13 @@
+{
+  "name": "tpxsoft-marketplace",
+  "owner": {
+    "name": "PoudrouxThomas"
+  },
+  "plugins": [
+    {
+      "name": "tpxsoft",
+      "source": "./plugins/tpxsoft",
+      "description": "TPXSoft's AI harness (agents, skills, hooks) bundled as a plugin."
+    }
+  ]
+}

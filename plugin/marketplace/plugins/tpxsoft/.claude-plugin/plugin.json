@@ -1,0 +1,11 @@
+{
+  "name": "tpxsoft",
+  "displayName": "TPXSoft harness",
+  "version": "0.1.0",
+  "description": "TPXSoft's AI harness (agents, skills, hooks) bundled as a plugin. Local/demo use only, not published.",
+  "author": {
+    "name": "PoudrouxThomas"
+  },
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json"
+}
