@@ -25,6 +25,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenPair"
+        "400":
+          description: Validation failed (e.g. password too short, malformed email).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Email already registered.
           content:
@@ -49,6 +55,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenPair"
+        "400":
+          description: Validation failed (e.g. malformed request body).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Invalid email or password.
           content:
@@ -73,6 +85,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenPair"
+        "400":
+          description: Validation failed (e.g. malformed request body).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Refresh token invalid, expired, or already revoked.
           content:
@@ -120,6 +138,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >
+        Access token claims (not otherwise expressible in OpenAPI, but part
+        of this contract -- treat a change to these as breaking): sub (User.Id),
+        email, orgId, role ("Admin" | "Member"), plus standard jti/iat/exp/iss/aud.
 
   schemas:
     Role:
@@ -181,16 +203,6 @@ components:
           format: uuid
         role:
           $ref: "#/components/schemas/Role"
-
-    Org:
-      type: object
-      required: [id, name]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
 
     Error:
       type: object
