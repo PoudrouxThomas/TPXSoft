@@ -36,8 +36,8 @@ internal static class Contracts
 
         if (!Shell.Exists("oasdiff"))
         {
-            Console.WriteLine($"tpx contract lint: {relPath} structurally valid (oasdiff not installed — skipping breaking-change check vs main)");
-            return true;
+            Console.Error.WriteLine($"tpx contract lint: {relPath} structurally valid, but 'oasdiff' is not installed — cannot check for breaking changes vs main. Install it (https://github.com/oasdiff/oasdiff#installation) rather than skip this check.");
+            return false;
         }
 
         var (showExitCode, mainContent) = Shell.Capture("git", $"show main:{relPath}");
@@ -51,7 +51,7 @@ internal static class Contracts
         try
         {
             File.WriteAllText(tempFile, mainContent);
-            var (diffExitCode, diffOutput) = Shell.Capture("oasdiff", $"breaking \"{tempFile}\" \"{contractPath}\"");
+            var (diffExitCode, diffOutput) = Shell.Capture("oasdiff", $"breaking \"{tempFile}\" \"{contractPath}\" --fail-on ERR");
             if (diffExitCode != 0)
             {
                 Console.Error.WriteLine($"tpx contract lint: breaking change in {relPath} vs main:\n{diffOutput}");
