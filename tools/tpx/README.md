@@ -19,6 +19,8 @@ Rather than every agent, hook, or skill knowing the details of `dotnet build`, `
 | `tpx contract lint` | Validates every `contracts/*.yaml` is structurally sound, and flags a breaking change if a required field or endpoint was removed compared to `main`. |
 | `tpx gen` | Regenerates the C#/Angular API clients under `shared/clients/` from the contracts. Contracts are the source of truth; generated clients are never hand-edited. |
 | `tpx worktree new <module>/<feature>` | Creates a git worktree for parallel agent work, and allocates it a unique Postgres port + `COMPOSE_PROJECT_NAME` so two worktrees can run integration tests at the same time without colliding. |
+| `tpx worktree list` | Lists allocated worktrees and their ports, flagging any whose directory is gone but whose port allocation wasn't released. |
+| `tpx worktree rm <module>/<feature>` | Removes the git worktree, deletes its branch, and frees the port allocation — closes the loop `new` opens. |
 
 ## Who executes these, and when
 
@@ -42,7 +44,7 @@ The split matters: hooks are a backstop that fires no matter what the agent does
 
 ## Current status
 
-No modules or contracts exist in the repo yet, so today every command correctly reports "nothing found" rather than faking success. They start doing real work once the Auth module (Phase 1) exists. `tpx worktree new` already does real port/`COMPOSE_PROJECT_NAME` allocation, since that needs no module or contract to exist.
+The Auth module (Phase 1) is built, so every command above does real work against it: `tpx verify auth` builds, tests, and lints its contract in single-digit seconds; `tpx test auth --integration` runs against a real Postgres via Testcontainers; `tpx contract lint` genuinely fails a breaking change and names the affected endpoints; `tpx gen` regenerates `shared/clients/csharp` from `modules/auth/nswag.json`. `tpx worktree new/list/rm` manage real worktrees with allocated ports, independent of any module existing. Auth is still the only module — commands that operate across modules (`find_consumers`, cross-module `wire-module`) remain unproven until a second one exists (see [PLAN.md](../../PLAN.md) §0.7, §0.4).
 
 ## Running it
 
