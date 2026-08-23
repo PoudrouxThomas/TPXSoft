@@ -1,1 +1,16 @@
-/modules/auth/ @PoudrouxThomas
+# Default: repo owner reviews anything not matched below.
+*                   @PoudrouxThomas
+
+# Harness — tpx CLI, hooks, agents, skills, CI. Changes here affect every module.
+/tools/             @PoudrouxThomas
+/.claude/           @PoudrouxThomas
+/.github/           @PoudrouxThomas
+
+# Contracts — single source of truth; a change here ripples to every consumer.
+/contracts/         @PoudrouxThomas
+
+# Generated clients — should only change via `tpx gen`, never by hand.
+/shared/clients/    @PoudrouxThomas
+
+# Modules — one line per module, so review routes to the team that owns it.
+/modules/auth/      @PoudrouxThomas
