@@ -92,35 +92,15 @@ footgun is now fixed at the source — see § 2.
 
 ### LOW — the Angular half of `tpx gen` is still unproven
 
-The C# path is real and reproducible. The Angular path is not: there is no
-`ng-openapi-gen.json`, no `angular.json`, no `package.json`, no `node_modules`, and nothing under
-`shared/clients/angular/`.
+Unchanged since pass 3. No `ng-openapi-gen.json`, `angular.json`, `package.json`, `node_modules`,
+or anything under `shared/clients/angular/`. Not a live defect — no Angular app exists yet — but
+becomes one at Phase 3 (Sharepoint-lite), exactly when the multi-repo extraction is also being
+learned. Cheap to prove now against a contract that already exists.
 
-**Impact.** Half the codegen pipeline is still theory, and `angular-implementer` remains untestable
-by construction. Not a live defect — there is no Angular app yet — but it becomes one at Phase 3
-(Sharepoint-lite), which is exactly when the multi-repo extraction is also being learned.
-
-**Benefit of fixing.** Same argument that justified proving the C# half early: don't debug codegen
-and a new stack simultaneously. Cheap to do now against a contract that already exists.
-
-### Housekeeping — 8 worktree directories under `.claude/worktrees/` are orphaned on disk
-
-`tpx worktree list`/`rm` are now built (see § 2) and used to prune the two `tpx`-managed
-allocations left from the second pass's audit worktrees. Separately, the eight
-`.claude/worktrees/*` directories were Claude Code's own session worktrees, not `tpx`-managed —
-`git worktree remove --force` deregistered all eight from git (`git worktree list` now shows only
-`main`) and their `claude/*` branches were confirmed merged, but the directories themselves refused
-deletion with `Device or resource busy` — an OS-level mount/handle, not a permissions problem, so
-forcing it further was not attempted. Their branches were left untouched (the `&&` chain
-short-circuited on the failed removal, so no partial state). **Needs a human:** close whatever
-still holds those paths open (likely this Claude Code install's own worktree runtime, or an
-editor) — a reboot is the blunt fix — then `rm -rf .claude/worktrees/*` and `git branch -D` the
-eight `claude/*` branches.
-
-### Housekeeping — local `main` is two commits behind `origin/main`
-
-`ebbf4db` (CODEOWNERS) and its merge `8e954c9` are on the remote only. Not a harness defect; noted
-so the next audit isn't run against a tree that is missing merged fixes. `git pull` clears it.
+*(Resolved: the `.claude/worktrees/*` directories were deleted by hand once the OS-level lock
+cleared, and their 9 `claude/*` branches — remote copies already deleted via merged PRs — were
+confirmed as ancestors of `main` and removed locally with `git branch -d`. `git branch` now shows
+only `main`.)*
 
 ---
 

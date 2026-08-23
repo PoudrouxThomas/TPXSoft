@@ -46,6 +46,10 @@ The split matters: hooks are a backstop that fires no matter what the agent does
 
 The Auth module (Phase 1) is built, so every command above does real work against it: `tpx verify auth` builds, tests, and lints its contract in single-digit seconds; `tpx test auth --integration` runs against a real Postgres via Testcontainers; `tpx contract lint` genuinely fails a breaking change and names the affected endpoints; `tpx gen` regenerates `shared/clients/csharp` from `modules/auth/nswag.json`. `tpx worktree new/list/rm` manage real worktrees with allocated ports, independent of any module existing. Auth is still the only module — commands that operate across modules (`find_consumers`, cross-module `wire-module`) remain unproven until a second one exists (see [PLAN.md](../../PLAN.md) §0.7, §0.4).
 
+## Troubleshooting
+
+If `tpx verify <module>` fails with an `MSB4018`/`DefineStaticWebAssets` error (a `JsonException` like `'0x00' is an invalid start of a value`) unrelated to anything you changed, it's a stale/corrupted gitignored `obj/` cache from an earlier interrupted build, not a real regression — clear that project's `obj/`/`bin` and retry.
+
 ## Running it
 
 From source (dev loop):
