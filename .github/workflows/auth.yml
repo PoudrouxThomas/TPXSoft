@@ -35,3 +35,13 @@ jobs:
         run: |
           export PATH="$PWD/tools/tpx/bin/Release/net9.0:$PATH"
           tpx verify auth
+
+      - name: tpx verify boundaries
+        run: |
+          export PATH="$PWD/tools/tpx/bin/Release/net9.0:$PATH"
+          tpx verify boundaries
+
+      - name: tpx test auth --integration
+        run: |
+          export PATH="$PWD/tools/tpx/bin/Release/net9.0:$PATH"
+          tpx test auth --integration
