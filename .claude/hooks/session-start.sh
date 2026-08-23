@@ -30,6 +30,15 @@ if ! dotnet tool update --global --add-source "$NUPKG_DIR" TPXSoft.Tpx >&2; then
     exit 0
 fi
 
+# `tpx gen` shells out to the `nswag` CLI (modules/*/nswag.json) to regenerate
+# shared/clients/csharp from contracts/. Install it the same way as tpx
+# itself so it resolves for this session, subagents, and the /schedule
+# routine's subprocess. Non-fatal: a failed install just means `tpx gen`
+# reports "nswag CLI is not installed" instead of silently working.
+if ! dotnet tool update --global NSwag.ConsoleCore >&2; then
+    echo "session-start: NSwag.ConsoleCore install failed, 'tpx gen' won't find nswag on PATH" >&2
+fi
+
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     {
         echo "export PATH=\"$TOOLS_DIR:\$PATH\""
