@@ -20,7 +20,18 @@ if ! command -v dotnet >/dev/null 2>&1; then
     exit 0
 fi
 
-if ! dotnet pack "$TPX_PROJ" -o "$NUPKG_DIR" --nologo -v quiet >&2; then
+# The csproj pins Version=0.1.0, so a bare `dotnet pack` always produces the
+# same package identity -- `dotnet tool update --global` then sees no new
+# version and silently keeps whatever binary was installed first, even after
+# source changes. Stamp a monotonically increasing NuGet package version
+# (UTC epoch seconds as the 4th part) on every pack, via -p:PackageVersion
+# rather than -p:Version -- Version also drives AssemblyVersion, which is
+# capped at 65534 per part and rejects an epoch-sized number outright.
+# Clear the local feed first so it can't keep picking a stale nupkg left
+# over from an earlier session.
+TPX_PACKAGE_VERSION="0.1.0.$(date -u +%s)"
+rm -rf "$NUPKG_DIR"
+if ! dotnet pack "$TPX_PROJ" -o "$NUPKG_DIR" -p:PackageVersion="$TPX_PACKAGE_VERSION" --nologo -v quiet >&2; then
     echo "session-start: tpx pack failed, leaving tpx off PATH" >&2
     exit 0
 fi

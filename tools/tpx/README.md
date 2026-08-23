@@ -58,8 +58,11 @@ dotnet run -- verify boundaries
 Installed as a global tool (what agents/hooks/CI/routines should call as plain `tpx`) — this is what `.claude/hooks/session-start.sh` does every session:
 
 ```bash
-dotnet pack tools/tpx -o tools/tpx/.nupkg --nologo -v quiet
+rm -rf tools/tpx/.nupkg
+dotnet pack tools/tpx -o tools/tpx/.nupkg -p:PackageVersion="0.1.0.$(date -u +%s)" --nologo -v quiet
 dotnet tool update --global --add-source tools/tpx/.nupkg TPXSoft.Tpx
 ```
+
+The `.csproj` pins `Version=0.1.0`; packing with that version unchanged means `dotnet tool update --global` sees the same package identity every time and is a no-op, silently leaving a stale binary installed after a source change. Stamping a build number (UTC epoch seconds) at pack time via `-p:PackageVersion` — not `-p:Version`, which also drives `AssemblyVersion` and rejects a part that large — and clearing `.nupkg` first so an old build can't linger in the local feed, makes every SessionStart's package strictly newer than whatever's installed, so the update always actually happens.
 
 Installs to `~/.dotnet/tools`, on the machine's real, persistent `PATH` — resolves for the main session, subagents, and any routine's own subprocess, not just this Claude Code session (see PLAN.md §0.5).

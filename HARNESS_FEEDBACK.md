@@ -50,8 +50,8 @@ simulation. Nothing found in this pass is broken.
 
 The stale-binary trap noted in the previous pass was avoided deliberately: `tpx` was uninstalled
 and reinstalled from a fresh `dotnet pack` before anything was measured, because
-`dotnet tool update --global` is a no-op when the package version string hasn't changed. That
-remains a live footgun until it's fixed at the source — see § 3.
+`dotnet tool update --global` was a no-op when the package version string hadn't changed. That
+footgun is now fixed at the source — see § 2.
 
 ---
 
@@ -79,6 +79,12 @@ remains a live footgun until it's fixed at the source — see § 3.
 - **`tools/tpx/README.md` § "Current status" was stale** (was LOW). It claimed no modules or
   contracts existed and every command reported "nothing found" — false since Phase 1. Rewritten to
   describe what Auth actually proves today, and the Commands table now lists `worktree list`/`rm`.
+- **`dotnet tool update --global` silently kept a stale `tpx`** (was LOW). `session-start.sh` now
+  packs with `-p:PackageVersion="0.1.0.$(date -u +%s)"` (not `-p:Version`, which also drives
+  `AssemblyVersion` and rejects a part that large) and clears `.nupkg` first. Verified live:
+  uninstalled `tpx`, ran the hook twice back to back — first run installed `0.1.0.<epoch1>`,
+  second logged "tool was correctly updated from version `0.1.0.<epoch1>` to `0.1.0.<epoch2>`",
+  and `.nupkg/` held exactly one file both times, no accumulation.
 
 ---
 
@@ -96,20 +102,6 @@ by construction. Not a live defect — there is no Angular app yet — but it be
 
 **Benefit of fixing.** Same argument that justified proving the C# half early: don't debug codegen
 and a new stack simultaneously. Cheap to do now against a contract that already exists.
-
-### LOW — `dotnet tool update --global` silently keeps a stale `tpx`
-
-Carried over from the second pass because it is still true, not because it is new. The package
-version string is fixed at `0.1.0`, so `dotnet tool update --global` is a no-op after a source
-change and a machine can keep running a pre-fix binary indefinitely. This pass worked around it by
-uninstalling first.
-
-**Impact.** "The source is fixed" and "the binary on this machine is fixed" remain different
-claims. Any negative result measured on a machine that hasn't reinstalled is untrustworthy.
-
-**Benefit of fixing.** Stamping a build-time version suffix (timestamp or short SHA) into the
-package version in `session-start.sh` makes every SessionStart pick up the current source, and
-makes audit results mean what they appear to mean.
 
 ### Housekeeping — 8 worktree directories under `.claude/worktrees/` are orphaned on disk
 
@@ -200,11 +192,9 @@ generates the allowlist automatically. Small, but it compounds across every futu
 ## 5. Suggested order
 
 1. `git pull` — get `CODEOWNERS` locally. *(seconds)*
-2. Stamp a real version into the `tpx` global-tool package so SessionStart stops shipping a stale
-   binary. *(small, and it makes every later audit trustworthy)*
-3. Manually clear the 8 orphaned `.claude/worktrees/*` directories once whatever holds them open is
+2. Manually clear the 8 orphaned `.claude/worktrees/*` directories once whatever holds them open is
    closed. *(needs a human — see § 3)*
-4. **Start Documents.** *(everything above is minutes of work; this is the actual next step)*
+3. **Start Documents.** *(everything above is minutes of work; this is the actual next step)*
 
 The verification loop is done. Nothing in § 3 blocks Phase 2, and every remaining item in § 4
 either requires a second module or gets sharper once one exists. Documents is no longer merely the
