@@ -15,8 +15,10 @@ internal static class Shell
     public static (int ExitCode, string Output) Capture(string fileName, string arguments, string? workingDirectory = null)
     {
         using var process = Start(fileName, arguments, workingDirectory, redirect: true);
-        var output = process.StandardOutput.ReadToEnd();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
+        var output = stdoutTask.GetAwaiter().GetResult() + stderrTask.GetAwaiter().GetResult();
         return (process.ExitCode, output);
     }
 

@@ -60,14 +60,28 @@ internal static class Hooks
         if (filePath.EndsWith(".cs", StringComparison.Ordinal))
         {
             var projDir = FindAncestor(filePath, "*.csproj");
-            if (projDir is not null && Shell.Run("dotnet", "build --nologo -v quiet", projDir) != 0)
-                return 2;
+            if (projDir is not null)
+            {
+                var (exitCode, output) = Shell.Capture("dotnet", "build --nologo -v quiet", projDir);
+                if (exitCode != 0)
+                {
+                    Console.Error.WriteLine(output);
+                    return 2;
+                }
+            }
         }
         else if (filePath.EndsWith(".ts", StringComparison.Ordinal))
         {
             var projDir = FindAncestor(filePath, "tsconfig.json");
-            if (projDir is not null && Shell.Run("npx", "tsc --noEmit", projDir) != 0)
-                return 2;
+            if (projDir is not null)
+            {
+                var (exitCode, output) = Shell.Capture("npx", "tsc --noEmit", projDir);
+                if (exitCode != 0)
+                {
+                    Console.Error.WriteLine(output);
+                    return 2;
+                }
+            }
         }
 
         return 0;
