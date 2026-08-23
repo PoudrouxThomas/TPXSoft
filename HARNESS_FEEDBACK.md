@@ -1,18 +1,18 @@
 # HARNESS_FEEDBACK.md
 
-Audit of the Phase 0 harness. Original pass on 2026-08-23 against `7c8ff4a` on `main`. Rerun the
-same day against `6813b84`, after four fix PRs merged (`bbbebef` stderr, `27d52f5` MCP launch,
-`54180a3` MCP/verify lock, `40de0f1` contract lint) — every CRITICAL and HIGH finding from the
-first pass is now fixed and confirmed live, and has been deleted from this file rather than kept
-as a stale warning. What remains below is what is still actually true.
+Audit of the Phase 0 harness. Original pass on 2026-08-23 against `7c8ff4a`. Second pass the same
+day against `6813b84`. **Third pass — this one — against `f62e2e8` on local `main` (`origin/main`
+is `8e954c9`, two commits ahead), after PRs #8–#11 merged: orphaned `.ps1` hooks removed
+(`af6f47e`), CI hardened (`7e96097`), `tpx gen` proven end to end for C# (`8d8ae68`), `CODEOWNERS`
+filled out (`ebbf4db`).**
 
 Every item below was executed, not read. Where a claim could not be tested, it says so rather than
-guessing.
+guessing. Findings that are fixed and confirmed live are deleted rather than kept as stale
+warnings; § 2 keeps a one-line record of what went away.
 
-The repository was left exactly as found each pass: branch `main`, clean working tree, one
-worktree (plus four pre-existing `.claude/worktrees/` from the merged fix PRs, untouched), no
-leftover containers. The stale-`.ps1`, `tpx gen`, and `CODEOWNERS` findings, plus the CI-coverage
-gap, are unchanged from the first pass.
+The repository was left exactly as found: branch `main`, clean working tree, the eight pre-existing
+`.claude/worktrees/` untouched, the test worktree removed and its branch deleted, no leftover
+Testcontainers. Docker Desktop and the base `tpxsoft-postgres` container were left running.
 
 ---
 
@@ -20,108 +20,98 @@ gap, are unchanged from the first pass.
 
 | # | Item | Result | Measured evidence |
 |---|---|---|---|
-| 1 | `docker compose up -d && tpx verify auth` under 60s | **PASS** | 9.9s and 5.3s on rerun (was 11.4s cold / 6.1s warm on the first pass). 35/35 unit tests, exit 0. |
-| 2 | `tpx test auth --integration` | **PASS** | 13/13 tests, 19.6s wall / 9s execution. Testcontainers Postgres torn down; no leftovers in `docker ps -a`. |
-| 3 | Parallel worktree, simultaneous integration runs | **PASS** | `tpx worktree new auth/verifydemo` allocated `POSTGRES_PORT=5433`, `COMPOSE_PROJECT_NAME=tpxsoft_auth_verifydemo`. Both trees 13/13 concurrently (13.8s main, 22.1s worktree incl. NuGet restore). Two Postgres containers on distinct ephemeral ports, zero conflicts. |
-| 4 | Editing `shared/clients/**` blocked by hook | **PASS** | `tpx hook block-generated` exits 2 with a message pointing at `contracts/` for both `clients/` and `generated/` paths; exits 0 for normal paths. |
-| 5 | Compile error surfaced by PostToolUse | **PASS (fixed)** | Re-tested with stdout redirected to `/dev/null`: the compiler error still prints, on stderr, before exit 2. First pass measured 0 bytes on stderr — traced to a stale globally-installed `tpx` binary, not a live defect once reinstalled; see "Fixed since first pass" below. |
-| 6 | Fresh session answers "what fields does `User` have?" via MCP | **PASS (fixed)** | `.mcp.json` now launches `dotnet exec` on the prebuilt DLL; server responds with all six tools in under 1s (was 8s+ via `dotnet run`, and never connected in-session on the first pass). |
-| 7 | `tpx contract lint` fails when a required field is removed | **PASS (fixed)** | Removed `refreshToken` from `TokenPair.required` in `contracts/auth.v1.yaml`: `tpx contract lint` now exits **1** and names all three affected endpoints (`POST /auth/login`, `POST /auth/refresh`, `POST /auth/register`) with `response-property-became-optional`. Reverted; lint green again, `git status` clean. |
-| 8 | Background `dotnet-implementer` produces green verify + PR via `gh` | **NOT RUN** | Prerequisites confirmed only: `gh` 2.97.0 authenticated as `PoudrouxThomas`, `origin` set to `github.com/PoudrouxThomas/TPXSoft.git`. |
-| 9 | Friday `/schedule` routine runs on demand | **NOT VERIFIABLE LOCALLY** | The routine lives in Claude Code's cloud scheduler; neither the local scheduled-tasks list nor session cron shows it. `GOALS.md` is evidence it ran at least once. |
+| 1 | `docker compose up -d && tpx verify auth` under 60s | **PASS** | Postgres healthy in ~8s; verify green in **6.7s and 8.7s** across two runs, exit 0, 35/35 unit tests. |
+| 2 | `tpx test auth --integration` | **PASS** | 13/13 tests, 18.4s wall. Testcontainers Ryuk reaper self-terminated; `docker ps -a` shows no leftovers. |
+| 3 | Parallel worktree, simultaneous integration runs | **PASS** | `tpx worktree new auth/feedbackcheck` allocated `POSTGRES_PORT=5434`, `COMPOSE_PROJECT_NAME=tpxsoft_auth_feedbackcheck`. Both trees 13/13 concurrently, zero port conflicts. |
+| 4 | Editing `shared/clients/**` blocked by hook | **PASS** | `tpx hook block-generated` exits 2 for both `clients/` and `generated/` paths with a message pointing at `contracts/` and naming `tpx gen`; exits 0 for a normal `modules/auth/src/**` path. |
+| 5 | Compile error surfaced by PostToolUse | **PASS** | Strongest evidence yet: the **live** hook fired on a real `Edit`, blocking with `CS1002`/`CS1519`. Manual stdin run confirmed exit 2 with stdout empty and all compiler text on stderr. |
+| 6 | Fresh session answers "what fields does `User` have?" via MCP | **PASS** | `initialize` in 0.24s, `tools/list` returns all six tools in 0.008s, `describe_entity("User")` in 0.141s → `required: [id, email, orgId, role]`, `id: uuid`, `email: email`, `orgId: uuid`, `role: $ref Role`. No `.cs` file read. |
+| 7 | `tpx contract lint` fails when a required field is removed | **PASS** | Removing `refreshToken` from `TokenPair.required` → exit **1**, naming `POST /auth/login`, `POST /auth/refresh`, `POST /auth/register` with `response-property-became-optional`. Reverted; green again, tree clean. |
+| 8 | Background `dotnet-implementer` produces green verify + PR via `gh` | **NOT RUN** | Prerequisites confirmed only: `gh` authenticated as `PoudrouxThomas` with `gist, read:org, repo, workflow`; `origin` → `github.com/PoudrouxThomas/TPXSoft.git`. Deliberately not launched during an audit. |
+| 9 | Friday `/schedule` routine runs on demand | **PASS** | Confirmed by the repo owner: the routine was run last Friday and executed correctly, producing its review and `GOALS.md` progress summary. Still not verifiable from a local shell — it lives in Claude Code's cloud scheduler. |
 
-**Headline:** every item that was previously FAIL or PARTIAL is now PASS. The verify loop is fast
-(5–10s), the MCP server connects in under a second, and the contract lint gate genuinely blocks a
-breaking change with a specific, correct diagnosis. `GOALS.md` checkboxes that depend on contract
-lint are no longer resting on a check that could not fail.
+**Additional checks, all green:**
+
+| Check | Result |
+|---|---|
+| `tpx verify boundaries` | exit 0 — "clean — no module references another module's `.Domain` or `.Infrastructure` directly". |
+| `tpx gen` | exit 0 — runs `nswag run modules/auth/nswag.json`, emits `shared/clients/csharp/TPXSoft.Auth.Client.g.cs`. `git status` empty before *and* after: generated output matches committed output byte for byte. |
+| `tpx verify --affected` on a clean tree | exit 0 in 0.087s — "no changed files under `modules/` — nothing to verify". |
+| `.github/workflows/auth.yml` | Now runs `tpx verify auth`, `tpx verify boundaries`, **and** `tpx test auth --integration` as separate steps. |
+| `.claude/hooks/*.ps1` | Gone. Only `session-start.sh` remains. |
+| `CODEOWNERS` | Filled out on `origin/main`: default owner, plus scoped rules for `/tools/`, `/.claude/`, `/.github/`, `/contracts/`, `/shared/clients/`, `/modules/auth/`. |
+
+**Headline: the harness works.** Nine of nine verification items are satisfied, eight by direct
+measurement in this session and one by the owner's own successful run. The verify loop runs an
+order of magnitude inside its 60-second budget, the MCP server answers a structural question in
+under a quarter second, the contract-lint gate genuinely blocks a breaking change with a correct
+and specific diagnosis, and the two hooks that matter both fired for real rather than in
+simulation. Nothing found in this pass is broken.
+
+The stale-binary trap noted in the previous pass was avoided deliberately: `tpx` was uninstalled
+and reinstalled from a fresh `dotnet pack` before anything was measured, because
+`dotnet tool update --global` is a no-op when the package version string hasn't changed. That
+remains a live footgun — see § 3.
 
 ---
 
-## 2. Fixed since the first pass (kept as record, not as open items)
+## 2. Fixed since the second pass (record, not open items)
 
-- **`tpx contract lint` returned green on breaking changes** (was CRITICAL). `oasdiff` is now
-  installed locally and in CI (`.github/workflows/auth.yml` gained an install step); the lint code
-  path itself was also changed so a real diff runs. Verified live: a removed required field now
-  fails with `exit 1` and names every affected endpoint.
-- **PostToolUse hook blocked without saying why** (was HIGH). `Shell.Capture` now reads the
-  build's combined output and `Console.Error.WriteLine`s it before returning 2. Verified live with
-  stdout suppressed — the error text still surfaces.
-- **MCP server and verify loop fought over the same build output** (was HIGH). `tpx verify auth`
-  now builds from `modules/auth/TPXSoft.Auth.verify.slnf`, a solution filter that excludes
-  `TPXSoft.Auth.Mcp`. Verified live: ran the MCP server and `tpx verify auth` concurrently, no
-  `MSB3027` lock error, verify still finished in 5.3s.
-- **`.mcp.json` used `dotnet run` on a relative path and never reliably connected** (was HIGH). It
-  now runs `dotnet exec ${CLAUDE_PROJECT_DIR}/.../TPXSoft.Auth.Mcp.dll` against a binary that
-  `session-start.sh` prebuilds. Verified live: server answers `tools/list` with all six tools in
-  under a second.
-
-One caveat surfaced only by rerunning rather than reading the diff: `dotnet tool update --global`
-is a no-op when the package version string hasn't changed, so a machine with an already-installed
-`tpx` can silently keep running the pre-fix binary after these merges land. That is not a defect
-in the fixes themselves — a clean `dotnet tool uninstall` + reinstall picked up the new build
-immediately — but it means "the source is fixed" and "the binary on this machine is fixed" are not
-the same claim, and worth remembering before trusting a negative result on this machine again.
+- **CI verified less than the local loop** (was MEDIUM). `.github/workflows/auth.yml` now runs
+  `tpx verify boundaries` and `tpx test auth --integration` alongside `tpx verify auth`. The PR
+  check is now the strong gate, which matters because PLAN.md § 0.9 dropped the headless
+  `claude -p` reviewer on cost grounds and this is the only automated gate on a PR.
+- **`tpx gen` had never generated anything** (was MEDIUM). `modules/auth/nswag.json` exists and
+  `tpx gen` produces a committed, reproducible `shared/clients/csharp/TPXSoft.Auth.Client.g.cs`.
+  The `block-generated` hook now guards a directory that actually exists. Partially resolved — the
+  Angular half is still unproven, see § 3.
+- **Orphaned PowerShell hook scripts** (was LOW). `block-generated.ps1`, `verify-on-save.ps1` and
+  `stop-verify.ps1` deleted. One obvious place to change hook behavior: `tools/tpx/Hooks.cs`.
+- **`CODEOWNERS` effectively empty** (was LOW). Now path-scoped across harness, contracts,
+  generated clients and modules, so the Phase 3 Auth extraction has a real monorepo to contrast
+  against.
+- **No `tpx` way to see or remove worktrees** (was LOW). `tpx worktree list` and
+  `tpx worktree rm <module>/<feature>` added (`tools/tpx/Worktrees.cs`); `rm` removes the git
+  worktree, deletes its branch, and frees the port allocation. Verified live: created
+  `auth/rmtest`, listed it, removed it, confirmed the port state file, `git worktree list`, and
+  `git branch` all went back to empty. Also used to prune the two orphaned allocations
+  (`auth-verifydemo`, `auth-feedbackcheck`) left from the second pass's own audit.
 
 ---
 
 ## 3. Still open
 
-### MEDIUM — `tpx gen` has never generated anything
+### LOW — the Angular half of `tpx gen` is still unproven
 
-There is no `nswag.json`, no `ng-openapi-gen.json`, no `shared/` directory, no `angular.json`, no
-`package.json`, no `node_modules`. `tpx gen` runs and reports:
+The C# path is real and reproducible. The Angular path is not: there is no
+`ng-openapi-gen.json`, no `angular.json`, no `package.json`, no `node_modules`, and nothing under
+`shared/clients/angular/`.
 
-```
-tpx gen: no nswag.json / ng-openapi-gen.json config found yet under modules/ or shared/clients/angular/ — nothing to regenerate
-```
+**Impact.** Half the codegen pipeline is still theory, and `angular-implementer` remains untestable
+by construction. Not a live defect — there is no Angular app yet — but it becomes one at Phase 3
+(Sharepoint-lite), which is exactly when the multi-repo extraction is also being learned.
 
-**Impact.** The generated-client pipeline is the mechanism by which modules are allowed to talk to
-each other, and it is entirely unproven. The `block-generated` PreToolUse hook — which does work —
-currently guards a directory that does not exist. Two agents (`angular-implementer`) and one skill
-(`wire-module`) are untestable by construction. This is not yet a live defect, because there is no
-second module to wire; it becomes one the moment Documents starts.
+**Benefit of fixing.** Same argument that justified proving the C# half early: don't debug codegen
+and a new stack simultaneously. Cheap to do now against a contract that already exists.
 
-**Benefit of fixing.** Proving `tpx gen` end to end on Auth alone, before a consumer exists, means
-the Documents module starts against a working pipeline instead of debugging codegen and
-cross-module wiring simultaneously. Cheaper to learn one thing at a time.
+### Housekeeping — 8 worktree directories under `.claude/worktrees/` are orphaned on disk
 
-### MEDIUM — CI verifies less than the local loop
+`tpx worktree list`/`rm` are now built (see § 2) and used to prune the two `tpx`-managed
+allocations left from the second pass's audit worktrees. Separately, the eight
+`.claude/worktrees/*` directories were Claude Code's own session worktrees, not `tpx`-managed —
+`git worktree remove --force` deregistered all eight from git (`git worktree list` now shows only
+`main`) and their `claude/*` branches were confirmed merged, but the directories themselves refused
+deletion with `Device or resource busy` — an OS-level mount/handle, not a permissions problem, so
+forcing it further was not attempted. Their branches were left untouched (the `&&` chain
+short-circuited on the failed removal, so no partial state). **Needs a human:** close whatever
+still holds those paths open (likely this Claude Code install's own worktree runtime, or an
+editor) — a reboot is the blunt fix — then `rm -rf .claude/worktrees/*` and `git branch -D` the
+eight `claude/*` branches.
 
-`.github/workflows/auth.yml` now installs `oasdiff` and runs `tpx verify auth`, but it still does
-not run `tpx verify boundaries` and does not run `tpx test auth --integration`.
+### Housekeeping — local `main` is two commits behind `origin/main`
 
-**Impact.** CI is weaker than a local run, so a green PR is a weaker signal than a green terminal.
-Boundary violations and integration regressions can still reach `main` unchallenged, even though
-contract-breaking changes can no longer sneak through either path.
-
-**Benefit of fixing.** Makes the PR check the real gate. This matters more than it looks: PLAN.md
-§ 0.9 dropped the headless `claude -p` PR reviewer on cost grounds, which means the deterministic
-CI job is the *only* automated gate on a PR. It should be the strong one.
-
-### LOW — Orphaned PowerShell hook scripts
-
-`.claude/hooks/` still contains `block-generated.ps1`, `verify-on-save.ps1` and `stop-verify.ps1`.
-None is wired into `settings.json`; the live implementations are `tpx hook <name>` subcommands in
-`tools/tpx/Hooks.cs`.
-
-**Impact.** Low today, guaranteed drift tomorrow. The next person to change hook behavior has two
-plausible-looking places to change it and no signal about which is real.
-
-**Benefit of fixing.** One obvious place to change hook behavior. Deleting them is a two-second
-edit that removes a future half-hour of confusion.
-
-### LOW — `CODEOWNERS` is effectively empty
-
-32 bytes: `/modules/auth/ @PoudrouxThomas`. PLAN.md § "Decisions taken" argues the monorepo is
-realistic because "realism comes from CODEOWNERS + per-package semver + independent deploys, not
-from repo walls". Two of the three don't exist yet.
-
-**Impact.** None on correctness. But the monorepo decision is currently unjustified by its own
-stated rationale, and the Phase 3 Auth extraction is supposed to teach the multi-repo tax by
-contrast — a contrast that only works if the monorepo actually carries the ownership machinery.
-
-**Benefit of fixing.** Makes the Phase 3 comparison meaningful, and exercises path-scoped review
-routing, which is itself a technique worth learning.
+`ebbf4db` (CODEOWNERS) and its merge `8e954c9` are on the remote only. Not a harness defect; noted
+so the next audit isn't run against a tree that is missing merged fixes. `git pull` clears it.
 
 ---
 
@@ -129,26 +119,28 @@ routing, which is itself a technique worth learning.
 
 PLAN.md is explicit that the product exists to make the harness necessary, and that the goal is
 learning AI-assisted development at scale. Judged against that, ranked by learning per unit of
-effort. Unchanged from the first pass — none of these depend on the fixes above.
+effort. Now that every verification item passes, this section — not § 3 — is where the remaining
+value is.
 
 ### 1. Build the Documents module
 
-The single largest gap. At one module, half the harness is theory rather than practice:
-`find_consumers` has nothing to find, `contract-guardian` has no downstream consumer to name,
-`wire-module` has nothing to wire, and asynchronous parallel agents have no independent work to
-split. Verification item 7's second clause — "and `contract-guardian` names the downstream
-consumers" — is structurally unreachable at n=1.
+The single largest gap, and it has only grown more decisive now that everything else is green. At
+one module, half the harness is theory rather than practice: `find_consumers` has nothing to find,
+`contract-guardian` has no downstream consumer to name, `wire-module` has nothing to wire, and
+asynchronous parallel agents have no independent work to split. Verification item 7's second
+clause — "and `contract-guardian` names the downstream consumers" — is structurally unreachable at
+n=1, and the scorecard above can only ever record its first clause.
 
 Cross-module contract breakage is the most instructive thing this design can teach, and it is
-currently untestable.
+still untestable.
 
 ### 2. Measure the token savings
 
-The harness is built on a cost argument — MCP contract queries instead of reading source — that
-has never been measured. `rtk gain` covers CLI proxying, and nothing covers the MCP layer. Now
-that the MCP server reliably connects, this is actually runnable: ask the same question twice, once
-via `describe_entity("User")` and once by letting an agent grep the `.cs` files, and record both
-token counts. Until that number exists, the central justification of § 0.7 is faith.
+The harness rests on a cost argument — MCP contract queries instead of reading source — that has
+never been measured. This pass makes it trivially runnable: `describe_entity("User")` answered in
+0.141s with four fields and their types. Ask the same question the other way, by letting an agent
+grep the `.cs` files, and record both token counts. Until that number exists, the central
+justification of § 0.7 is faith.
 
 ### 3. Evaluate the agents themselves
 
@@ -166,8 +158,8 @@ marginal cost. Same headless-mode learning, none of the bill.
 
 ### 5. Actually invoke `/loop`
 
-The one Phase 0 technique never exercised. Cheap to try: point it at the remaining endpoints in
-`contracts/auth.v1.yaml` and let it iterate until `tpx verify auth` is green.
+Still the one Phase 0 technique never exercised. Cheap to try: point it at the remaining endpoints
+in `contracts/auth.v1.yaml` and let it iterate until `tpx verify auth` is green.
 
 ### 6. `.claude/commands/` does not exist
 
@@ -190,11 +182,13 @@ generates the allowlist automatically. Small, but it compounds across every futu
 
 ## 5. Suggested order
 
-1. Add `boundaries` + integration tests to `.github/workflows/auth.yml`. *(MEDIUM)*
-2. Prove `tpx gen` end to end on Auth before Documents needs it. *(MEDIUM)*
-3. Delete the orphaned `.ps1` hooks. *(LOW, trivial)*
-4. Fill out `CODEOWNERS` before Phase 3 needs it as contrast. *(LOW)*
-5. Then start Documents — against a harness whose green now means green.
+1. `git pull` — get `CODEOWNERS` locally. *(seconds)*
+2. Fix the stale § "Current status" in `tools/tpx/README.md`. *(trivial)*
+3. Stamp a real version into the `tpx` global-tool package so SessionStart stops shipping a stale
+   binary. *(small, and it makes every later audit trustworthy)*
+4. Add `tpx worktree list` / `tpx worktree rm`, then prune the eight leftovers. *(small)*
+5. **Start Documents.** *(everything above is minutes of work; this is the actual next step)*
 
-Everything CRITICAL/HIGH from the first pass is done; what's left is lower-severity hardening plus
-the learning-goal gaps in § 4, of which Documents (§4.1) is by far the highest-value next step.
+The verification loop is done. Nothing in § 3 blocks Phase 2, and every remaining item in § 4
+either requires a second module or gets sharper once one exists. Documents is no longer merely the
+highest-value next step — it is the only one that teaches something the current tree cannot.

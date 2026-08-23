@@ -54,23 +54,90 @@ internal static class Worktrees
         return 0;
     }
 
+    public static int List()
+    {
+        var state = LoadState();
+        if (state.Count == 0)
+        {
+            Console.WriteLine("tpx worktree list: no worktrees allocated");
+            return 0;
+        }
+
+        var worktreesRoot = Path.GetFullPath(Path.Combine(Modules.RepoRoot, "..", $"{Path.GetFileName(Modules.RepoRoot)}.worktrees"));
+        foreach (var (name, offset) in state.OrderBy(kv => kv.Value))
+        {
+            var worktreePath = Path.Combine(worktreesRoot, name);
+            var status = Directory.Exists(worktreePath) ? "present" : "MISSING (orphaned port allocation)";
+            Console.WriteLine($"{name}: POSTGRES_PORT={5432 + offset} — {worktreePath} — {status}");
+        }
+        return 0;
+    }
+
+    public static int Remove(string spec)
+    {
+        var parts = spec.Split('/', 2);
+        if (parts.Length != 2 || parts[0].Length == 0 || parts[1].Length == 0)
+        {
+            Console.Error.WriteLine("tpx worktree rm: expected <module>/<feature>, e.g. 'auth/demo'");
+            return 1;
+        }
+
+        var (module, feature) = (parts[0], parts[1]);
+        var name = $"{module}-{feature}";
+        var branch = $"{module}/{feature}";
+
+        var worktreesRoot = Path.GetFullPath(Path.Combine(Modules.RepoRoot, "..", $"{Path.GetFileName(Modules.RepoRoot)}.worktrees"));
+        var worktreePath = Path.Combine(worktreesRoot, name);
+
+        if (Directory.Exists(worktreePath))
+        {
+            Console.WriteLine($"tpx worktree rm: git worktree remove \"{worktreePath}\"");
+            var exitCode = Shell.Run("git", $"worktree remove \"{worktreePath}\" --force");
+            if (exitCode != 0)
+                return exitCode;
+        }
+        else
+        {
+            Console.WriteLine($"tpx worktree rm: {worktreePath} does not exist, clearing its port allocation only");
+        }
+
+        Shell.Run("git", $"branch -D \"{branch}\"");
+
+        var state = LoadState();
+        if (state.Remove(name))
+            SaveState(state);
+
+        Console.WriteLine($"tpx worktree rm: released {name}");
+        return 0;
+    }
+
     // Allocated offsets are stored in the shared git dir (git rev-parse --git-common-dir),
     // not the worktree's own working copy — every worktree checks out its own PLAN.md,
     // so anything under Modules.RepoRoot would NOT be visible across worktrees.
     private static int AllocatePortOffset(string name)
     {
-        var stateFile = StateFilePath();
-        Dictionary<string, int> state = File.Exists(stateFile)
-            ? JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllText(stateFile)) ?? new()
-            : new();
+        var state = LoadState();
 
         if (state.TryGetValue(name, out var existing))
             return existing;
 
         var next = state.Count == 0 ? 1 : state.Values.Max() + 1;
         state[name] = next;
-        File.WriteAllText(stateFile, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
+        SaveState(state);
         return next;
+    }
+
+    private static Dictionary<string, int> LoadState()
+    {
+        var stateFile = StateFilePath();
+        return File.Exists(stateFile)
+            ? JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllText(stateFile)) ?? new()
+            : new();
+    }
+
+    private static void SaveState(Dictionary<string, int> state)
+    {
+        File.WriteAllText(StateFilePath(), JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static string StateFilePath()

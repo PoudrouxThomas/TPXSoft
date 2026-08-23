@@ -168,13 +168,17 @@ internal static class Commands
 
     private static int HandleWorktree(string[] rest)
     {
-        if (rest.Length < 2 || rest[0] != "new")
-        {
-            Console.Error.WriteLine("tpx worktree: expected 'new <module>/<feature>'");
-            return 1;
-        }
+        if (rest.Length == 1 && rest[0] == "list")
+            return Worktrees.List();
 
-        return Worktrees.New(rest[1]);
+        if (rest.Length == 2 && rest[0] == "new")
+            return Worktrees.New(rest[1]);
+
+        if (rest.Length == 2 && rest[0] == "rm")
+            return Worktrees.Remove(rest[1]);
+
+        Console.Error.WriteLine("tpx worktree: expected 'new <module>/<feature>', 'list', or 'rm <module>/<feature>'");
+        return 1;
     }
 
     private static int Unknown(string command)
@@ -203,6 +207,8 @@ internal static class Commands
               tpx contract lint                validate every contracts/*.yaml + breaking-change diff vs main
               tpx gen                          regenerate shared/clients from contracts/ (NSwag + ng-openapi-gen)
               tpx worktree new <module>/<feature>  git worktree + allocated Postgres port + COMPOSE_PROJECT_NAME
+              tpx worktree list                list allocated worktrees and their ports
+              tpx worktree rm <module>/<feature>   remove the worktree, delete its branch, free the port
               tpx hook <name>                  run a Claude Code hook body (block-generated, verify-on-save, stop-verify)
             """);
     }
