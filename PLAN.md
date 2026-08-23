@@ -138,41 +138,37 @@ Async usage: launch `dotnet-implementer` and `angular-implementer` in the backgr
 
 Each is a short procedure, not an essay — that is the only way a skill pays back its own token cost.
 
-### 0.5 Hooks (`.claude/settings.json`, project scope) — written, Windows-only
+### 0.5 Hooks (`.claude/settings.json`, project scope) — done, cross-platform
 
 - Keep the existing global `rtk hook claude` PreToolUse on Bash.
-- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction. (`block-generated.ps1`)
-- PostToolUse on Edit/Write of touched project → narrow build/lint check. (`verify-on-save.ps1`)
-- Stop hook → `tpx verify --affected`. (`stop-verify.ps1`)
+- **SessionStart hook** builds `tools/tpx` and puts it on `PATH` for the session, no-ops
+  gracefully if `dotnet` isn't present yet. (`session-start.sh`, written via the
+  `session-start-hook` skill)
+- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction. (`block-generated.sh`)
+- PostToolUse on Edit/Write of touched project → narrow build/lint check. (`verify-on-save.sh`)
+- Stop hook → `tpx verify --affected`. (`stop-verify.sh`)
 
 Hooks cost zero tokens and catch agent errors at the moment they happen, which is the cheapest possible point.
 
-**Deferred, and the reason the above is not actually done everywhere:** all four hooks run
-`pwsh -NoProfile -File .claude/hooks/*.ps1`, and `pwsh` does not exist in a Linux cloud
-session (`pwsh: command not found`). They fire on the Windows dev machine and nowhere else,
-so the Stop-hook backstop is missing exactly where an unattended agent runs — the case the
-paragraph above argues it exists for. Fix is either `pwsh` in the cloud environment's setup
-script, or the three `.ps1` files ported to POSIX shell / a cross-platform runner.
+**Fixed — POSIX port.** The four hooks used to run `pwsh -NoProfile -File .claude/hooks/*.ps1`,
+and `pwsh` does not exist in a Linux cloud session (`pwsh: command not found`) — PR #2 only
+documented this, it shipped no fix. All three were rewritten as `bash` scripts with identical
+behavior (confirmed: `block-generated.sh` blocks a `shared/clients/**` edit, `session-start.sh`
+builds `tpx` and exports it to `PATH` via `$CLAUDE_ENV_FILE`, degrades to a no-op when `dotnet`
+is absent from `PATH`). The original `.ps1` files are left in place for the Windows dev machine,
+just no longer wired into `settings.json`.
 
-**Deferred — a SessionStart hook to make `tpx` present in every session.** Nothing today
-builds `tpx` or puts it on `PATH`, so a fresh session (cloud especially) has no `tpx` at
-all and falls back to reading its source instead of running it. The split to respect:
-
-- **Environment setup script** provisions the VM — the .NET SDK itself. Not repo content;
-  it lives in the cloud environment dialog at claude.ai/code. The .NET SDK is not
-  pre-installed, and `builds.dotnet.microsoft.com` is *not* on the Trusted egress
-  allowlist (the proxy 403s the CONNECT), so `dotnet-install.sh` fails while
-  `dotnet.microsoft.com` and `nuget.org` resolve fine — a confusing combination. Working
-  recipe that avoids a network-policy change: `apt-get install -y dotnet-sdk-10.0`, plus
-  `DOTNET_ROLL_FORWARD=Major` as an environment variable. Ubuntu 24.04 has no
-  `dotnet-sdk-9.0`, but SDK 10 builds this `net9.0` tree (targeting pack restores from
-  nuget.org) and roll-forward runs the output on the 10 runtime. Verified end to end.
-- **SessionStart hook** does project setup that should run everywhere, cloud and local:
-  build `tools/tpx` and expose it as `tpx`. That belongs in the repo so both halves of the
-  loop agree. The `session-start-hook` skill exists to write it.
-
-Both are prerequisites for the weekly review routine (0.8) doing real verification rather
-than reading source and reporting what it inferred.
+**Still open — persistent .NET SDK provisioning.** The SessionStart hook above only builds
+`tpx` *if* `dotnet` is already on `PATH`; it does not install the SDK itself. A fresh cloud
+container still has no .NET SDK pre-installed. Working recipe, verified end to end in this
+session: `apt-get install -y dotnet-sdk-10.0`, plus `DOTNET_ROLL_FORWARD=Major` as an
+environment variable (`builds.dotnet.microsoft.com`, where `dotnet-install.sh` fetches from,
+is *not* on the Trusted egress allowlist and 403s, while `dotnet.microsoft.com`/`nuget.org`
+resolve fine; Ubuntu 24.04 has no `dotnet-sdk-9.0` package but SDK 10 builds this `net9.0`
+tree and roll-forward runs the output). This belongs in the cloud environment's own setup
+script (claude.ai/code environment settings, not repo content) — until someone applies it
+there, every fresh cloud session needs the `apt-get install` run by hand once before the
+SessionStart hook has anything to build.
 
 ### 0.6 Worktrees — done
 
