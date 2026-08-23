@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "TPXSoft.Auth.sln",
+    "projects": [
+      "src\\TPXSoft.Auth.Domain\\TPXSoft.Auth.Domain.csproj",
+      "src\\TPXSoft.Auth.Infrastructure\\TPXSoft.Auth.Infrastructure.csproj",
+      "src\\TPXSoft.Auth.Api\\TPXSoft.Auth.Api.csproj",
+      "tests\\TPXSoft.Auth.UnitTests\\TPXSoft.Auth.UnitTests.csproj",
+      "tests\\TPXSoft.Auth.IntegrationTests\\TPXSoft.Auth.IntegrationTests.csproj"
+    ]
+  }
+}
