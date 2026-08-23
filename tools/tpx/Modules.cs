@@ -21,9 +21,14 @@ internal static class Modules
     public static string? FindSolution(string module)
     {
         var moduleDir = Path.Combine(ModulesDir, module);
-        return Directory.Exists(moduleDir)
-            ? Directory.GetFiles(moduleDir, "*.sln").FirstOrDefault()
-            : null;
+        if (!Directory.Exists(moduleDir))
+            return null;
+
+        // A *.verify.slnf, when present, scopes `tpx verify` to build/test projects only —
+        // excluding e.g. an .Mcp project a live MCP server process holds a file lock on
+        // (see HARNESS_FEEDBACK.md, "MCP server and verify loop fight over build output").
+        return Directory.GetFiles(moduleDir, "*.verify.slnf").FirstOrDefault()
+            ?? Directory.GetFiles(moduleDir, "*.sln").FirstOrDefault();
     }
 
     public static string? FindContract(string module)
