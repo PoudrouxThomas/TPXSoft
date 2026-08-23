@@ -43,21 +43,22 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
 ### 0.5 Hooks (`.claude/settings.json`, project scope)
 
 All five are written, wired in `settings.json`, and **fire on Linux as well as Windows**
-now — the three PreToolUse/PostToolUse/Stop hooks were rewritten from `pwsh` to `bash`
-(confirmed: `block-generated.sh` blocks a `shared/clients/**` edit; `verify-on-save.sh` and
-`stop-verify.sh` carry the same logic as their retired `.ps1` originals, which remain in
-the repo unwired for the Windows dev machine), and a SessionStart hook now builds `tpx`
-onto `PATH` automatically every session.
+now. The three PreToolUse/PostToolUse/Stop hooks were first rewritten from `pwsh` to `bash`,
+then moved again into `tpx hook <name>` subcommands (`tools/tpx/Hooks.cs`) — same behavior,
+no `bash`+`jq` dependency, one binary. A SessionStart hook installs `tpx` as a `dotnet`
+global tool every session, so it resolves for the main thread, subagents, and the remote
+`/schedule` routine's own subprocess alike (PLAN.md §0.5 "Fixed — `tpx` unreachable from
+routines and subagents").
 
 - [x] Global `rtk hook claude` PreToolUse on Bash, copied into project settings
-- [x] SessionStart hook building `tools/tpx` and exporting it onto `PATH`
-      (`.claude/hooks/session-start.sh`, via `$CLAUDE_ENV_FILE`) — no-ops if `dotnet`
-      isn't present rather than failing session start
+- [x] SessionStart hook installing `tools/tpx` as a global `dotnet tool` and onto `PATH`
+      (`.claude/hooks/session-start.sh`) — no-ops if `dotnet` isn't present rather than
+      failing session start
 - [x] PreToolUse on Edit/Write blocking `**/clients/**` and `**/generated/**`
-      (`.claude/hooks/block-generated.sh`)
+      (`tpx hook block-generated`)
 - [x] PostToolUse on Edit/Write running build/lint for the touched project
-      (`.claude/hooks/verify-on-save.sh`)
-- [x] Stop hook running `tpx verify --affected` (`.claude/hooks/stop-verify.sh`)
+      (`tpx hook verify-on-save`)
+- [x] Stop hook running `tpx verify --affected` (`tpx hook stop-verify`)
 - [ ] .NET SDK provisioned automatically in fresh cloud containers — blocked: that's an
       environment-setup-script change outside the repo (claude.ai/code environment
       settings), not something a SessionStart hook can do. Verified working recipe is

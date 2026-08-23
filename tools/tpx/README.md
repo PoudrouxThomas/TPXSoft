@@ -53,10 +53,11 @@ cd tools/tpx
 dotnet run -- verify boundaries
 ```
 
-Built exe (what agents/hooks/CI should call as plain `tpx`):
+Installed as a global tool (what agents/hooks/CI/routines should call as plain `tpx`) — this is what `.claude/hooks/session-start.sh` does every session:
 
 ```bash
-dotnet build -c Release tools/tpx
+dotnet pack tools/tpx -o tools/tpx/.nupkg --nologo -v quiet
+dotnet tool update --global --add-source tools/tpx/.nupkg TPXSoft.Tpx
 ```
 
-Produces `tools/tpx/bin/Release/net9.0/tpx.exe`. Add that folder to `PATH` to call it as `tpx` from anywhere.
+Installs to `~/.dotnet/tools`, on the machine's real, persistent `PATH` — resolves for the main session, subagents, and any routine's own subprocess, not just this Claude Code session (see PLAN.md §0.5).

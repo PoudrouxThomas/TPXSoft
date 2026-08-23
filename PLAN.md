@@ -141,22 +141,34 @@ Each is a short procedure, not an essay — that is the only way a skill pays ba
 ### 0.5 Hooks (`.claude/settings.json`, project scope) — done, cross-platform
 
 - Keep the existing global `rtk hook claude` PreToolUse on Bash.
-- **SessionStart hook** builds `tools/tpx` and puts it on `PATH` for the session, no-ops
-  gracefully if `dotnet` isn't present yet. (`session-start.sh`, written via the
-  `session-start-hook` skill)
-- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction. (`block-generated.sh`)
-- PostToolUse on Edit/Write of touched project → narrow build/lint check. (`verify-on-save.sh`)
-- Stop hook → `tpx verify --affected`. (`stop-verify.sh`)
+- **SessionStart hook** installs `tools/tpx` as a real `dotnet` global tool (`dotnet pack` +
+  `dotnet tool update --global`), no-ops gracefully if `dotnet` isn't present yet.
+  (`session-start.sh`, written via the `session-start-hook` skill)
+- **PreToolUse on Edit/Write matching `**/clients/**` or `**/generated/**` → block.** Forces contract-first discipline mechanically instead of by instruction. (`tpx hook block-generated`)
+- PostToolUse on Edit/Write of touched project → narrow build/lint check. (`tpx hook verify-on-save`)
+- Stop hook → `tpx verify --affected`. (`tpx hook stop-verify`)
 
 Hooks cost zero tokens and catch agent errors at the moment they happen, which is the cheapest possible point.
 
 **Fixed — POSIX port.** The four hooks used to run `pwsh -NoProfile -File .claude/hooks/*.ps1`,
 and `pwsh` does not exist in a Linux cloud session (`pwsh: command not found`) — PR #2 only
 documented this, it shipped no fix. All three were rewritten as `bash` scripts with identical
-behavior (confirmed: `block-generated.sh` blocks a `shared/clients/**` edit, `session-start.sh`
-builds `tpx` and exports it to `PATH` via `$CLAUDE_ENV_FILE`, degrades to a no-op when `dotnet`
-is absent from `PATH`). The original `.ps1` files are left in place for the Windows dev machine,
-just no longer wired into `settings.json`.
+behavior. The original `.ps1` files are left in place for the Windows dev machine, just no
+longer wired into `settings.json`.
+
+**Fixed — `tpx` unreachable from routines and subagents.** The first cut of the above put a
+locally-built `tpx` on `PATH` only via `$CLAUDE_ENV_FILE`, a Claude-Code-session mechanism —
+the Friday `/schedule` routine's own subprocess (and a subagent's) could start from a PATH
+snapshot taken before that file is sourced, so bare `tpx` wasn't found even though SessionStart
+had run. Fixed by installing `tpx` as a genuine `dotnet tool --global` (lands in
+`~/.dotnet/tools`, on the machine's real, persistent `PATH`, not dependent on Claude's
+env-file plumbing) and by moving the three PreToolUse/PostToolUse/Stop hook bodies from
+standalone `bash`+`jq` scripts into `tpx hook <name>` subcommands (`tools/tpx/Hooks.cs`) —
+one binary, no `jq` dependency, callable the same way a routine calls any other `tpx`
+command. **Known tradeoff, accepted:** a global tool install is one shared, mutable
+location per machine — two `tpx worktree new` sessions running SessionStart concurrently
+on the same machine will race, and whichever finishes last wins for both. Revisit
+(e.g. a per-worktree local tool manifest) if that collision is ever actually observed.
 
 **Still open — persistent .NET SDK provisioning.** The SessionStart hook above only builds
 `tpx` *if* `dotnet` is already on `PATH`; it does not install the SDK itself. A fresh cloud
