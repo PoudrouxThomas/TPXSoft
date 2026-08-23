@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File .claude/hooks/block-generated.ps1"
+            "command": "bash .claude/hooks/block-generated.sh"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File .claude/hooks/verify-on-save.ps1"
+            "command": "bash .claude/hooks/verify-on-save.sh"
           }
         ]
       }
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File .claude/hooks/stop-verify.ps1"
+            "command": "bash .claude/hooks/stop-verify.sh"
           }
         ]
       }
