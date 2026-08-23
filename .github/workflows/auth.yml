@@ -1,0 +1,32 @@
+name: auth
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "modules/auth/**"
+      - "contracts/auth.v*.yaml"
+      - "tools/tpx/**"
+  pull_request:
+    paths:
+      - "modules/auth/**"
+      - "contracts/auth.v*.yaml"
+      - "tools/tpx/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build tpx
+        run: dotnet build -c Release tools/tpx
+
+      - name: tpx verify auth
+        run: |
+          export PATH="$PWD/tools/tpx/bin/Release/net9.0:$PATH"
+          tpx verify auth
