@@ -188,7 +188,7 @@ SessionStart hook has anything to build.
 
 `.claude/` lives at the repo root and is shared by all worktrees automatically.
 
-### 0.7 MCP servers — deferred until Auth module exists
+### 0.7 MCP servers — done (Auth)
 
 One per module, C# `ModelContextProtocol` SDK, stdio transport, registered in root `.mcp.json` so every session and worktree picks them up. Tool surface per module:
 
@@ -198,23 +198,23 @@ One per module, C# `ModelContextProtocol` SDK, stdio transport, registered in ro
 - `run_tests(filter?)` — lets a remote agent verify without shell access
 - `get_migrations_status()`
 
-Auth's MCP server is built in Phase 1 and becomes the template for `new-module`.
+Auth's MCP server (`modules/auth/src/TPXSoft.Auth.Mcp`) is built and registered as `tpxsoft-auth` in root `.mcp.json`; all six tools above are implemented (`ContractTools.cs`: `get_openapi`, `list_endpoints`, `describe_entity`, `find_consumers`; `OperationsTools.cs`: `run_tests`, `get_migrations_status`). It is the template for `new-module` going forward.
 
-### 0.8 Loops, schedules, and goal tracking — schedule live, GOALS.md pending
+### 0.8 Loops, schedules, and goal tracking — schedule live, GOALS.md seeded, tpx-goal skill pending
 
-- **`/schedule`** — Friday 18:00 cloud routine is created: `/code-review` over the week's merges, plus `tpx contract lint` drift check, plus a `GOALS.md` progress report. Lives in Claude Code's own scheduler (cron), not as a file in this repo — nothing under `.claude/` to commit for it. First run will fire today at 18:00.
-- **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green." Not yet used — no contract to iterate against until Auth exists.
-- **Goal tracking** — a project skill `tpx-goal` that reads and updates `GOALS.md`: one milestone per section, each with machine-checkable acceptance criteria (`tpx verify auth` green, contract covers N endpoints, integration coverage above X). It reports progress at session start and inside the Friday routine. Machine-checkable is the important part — a goal an agent can evaluate is a goal an agent can be held to. Not built yet — `GOALS.md` gets its first content either from the Friday routine's first run or when Auth work starts, whichever comes first.
+- **`/schedule`** — Friday 18:00 cloud routine is created: `/code-review` over the week's merges, plus `tpx contract lint` drift check, plus a `GOALS.md` progress report. Lives in Claude Code's own scheduler (cron), not as a file in this repo — nothing under `.claude/` to commit for it.
+- **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green." Now usable — `contracts/auth.v1.yaml` exists — but not yet actually invoked.
+- **Goal tracking** — `GOALS.md` exists (written by the Friday routine's first run) with milestone acceptance criteria. The project skill `tpx-goal` that reads/updates it automatically is not built yet — updates so far are manual/routine-driven, not skill-driven.
 
 ### 0.9 Capstone (do after Phase 1, not now)
 
 Bundle `.claude/agents` + `.claude/skills` + hooks into a `tpxsoft` plugin served from your own marketplace repo; validate with `claude plugin eval`. Add a headless `claude -p` PR-review job in CI.
 
-### 0.10 CLAUDE.md hierarchy (do after Phase 1's first module, not now)
+### 0.10 CLAUDE.md hierarchy — done (Auth)
 
-Root `CLAUDE.md` already exists and stays short — repo map, `tpx` commands, naming conventions, "never edit `shared/clients` or any `generated/` path", commit/PR conventions. The per-module half needs a module to describe, so write it once Auth exists:
+Root `CLAUDE.md` already exists and stays short — repo map, `tpx` commands, naming conventions, "never edit `shared/clients` or any `generated/` path", commit/PR conventions.
 
-- `modules/auth/CLAUDE.md`: bounded context, entities, its `tpx verify` line, known consumers. Loaded only when an agent works in that module. Becomes the template `new-module` copies for every module after.
+- `modules/auth/CLAUDE.md`: bounded context, entities, its `tpx verify` line, known consumers. Loaded only when an agent works in that module. Template for every module after.
 
 ---
 
