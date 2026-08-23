@@ -200,11 +200,11 @@ One per module, C# `ModelContextProtocol` SDK, stdio transport, registered in ro
 
 Auth's MCP server (`modules/auth/src/TPXSoft.Auth.Mcp`) is built and registered as `tpxsoft-auth` in root `.mcp.json`; all six tools above are implemented (`ContractTools.cs`: `get_openapi`, `list_endpoints`, `describe_entity`, `find_consumers`; `OperationsTools.cs`: `run_tests`, `get_migrations_status`). It is the template for `new-module` going forward.
 
-### 0.8 Loops, schedules, and goal tracking — schedule live, GOALS.md seeded, tpx-goal skill pending
+### 0.8 Loops, schedules, and goal tracking — done
 
 - **`/schedule`** — Friday 18:00 cloud routine is created: `/code-review` over the week's merges, plus `tpx contract lint` drift check, plus a `GOALS.md` progress report. Lives in Claude Code's own scheduler (cron), not as a file in this repo — nothing under `.claude/` to commit for it.
 - **`/loop`** — within-session, self-paced: "implement remaining endpoints in `contracts/auth.v1.yaml` until `tpx verify auth` is green." Now usable — `contracts/auth.v1.yaml` exists — but not yet actually invoked.
-- **Goal tracking** — `GOALS.md` exists (written by the Friday routine's first run) with milestone acceptance criteria. The project skill `tpx-goal` that reads/updates it automatically is not built yet — updates so far are manual/routine-driven, not skill-driven.
+- **Goal tracking** — `GOALS.md` exists (written by the Friday routine's first run) with milestone acceptance criteria. `.claude/skills/tpx-goal` re-verifies each checkbox against real repo state (files, `tpx verify`/`tpx contract lint` output, agent/skill/hook presence) rather than trusting a prior run's claim, flips only what evidence disagrees with, and reports a progress summary — invoked on request, not a hook.
 
 ### 0.9 Capstone (do after Phase 1, not now)
 

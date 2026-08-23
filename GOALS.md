@@ -96,9 +96,11 @@ routines and subagents").
 
 - [x] Weekly `/schedule` cloud routine exists and runs PR review + contract lint +
       `GOALS.md` update (this routine)
-- [ ] `tpx-goal` skill that reads/updates `GOALS.md` and reports progress at session
-      start — not built yet; this file is currently maintained by hand/by the weekly
-      routine instead
+- [x] `tpx-goal` skill built (`.claude/skills/tpx-goal/SKILL.md`) — re-verifies each
+      checkbox against real repo state (file/dir existence, actually re-running
+      `tpx verify`/`tpx contract lint`/etc., agent/skill/hook presence) rather than
+      trusting a prior claim, and reports a progress summary. Invoked on request
+      (`/tpx-goal` or asking to check goal status) — not wired as a session-start hook.
 
 ### 0.9 Capstone (do after Phase 1)
 
