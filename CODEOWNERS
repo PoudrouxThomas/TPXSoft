@@ -14,3 +14,4 @@
 
 # Modules — one line per module, so review routes to the team that owns it.
 /modules/auth/      @PoudrouxThomas
+/modules/documents/ @PoudrouxThomas

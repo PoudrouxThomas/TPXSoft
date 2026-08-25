@@ -1,0 +1,25 @@
+{
+  "runtime": "Net90",
+  "defaultVariables": null,
+  "documentGenerator": {
+    "fromDocument": {
+      "json": null,
+      "url": "../../contracts/documents.v1.yaml",
+      "output": null
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpClient": {
+      "clientBaseClass": null,
+      "configurationClass": null,
+      "generateClientInterfaces": true,
+      "generateDtoTypes": true,
+      "generateExceptionClasses": true,
+      "generateOptionalParameters": true,
+      "generateSyncMethods": false,
+      "namespace": "TPXSoft.Documents.Client",
+      "className": "DocumentsClient",
+      "output": "../../shared/clients/csharp/TPXSoft.Documents.Client.g.cs"
+    }
+  }
+}

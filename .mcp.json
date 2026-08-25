@@ -3,6 +3,10 @@
     "tpxsoft-auth": {
       "command": "dotnet",
       "args": ["exec", "${CLAUDE_PROJECT_DIR}/modules/auth/src/TPXSoft.Auth.Mcp/bin/Debug/net9.0/TPXSoft.Auth.Mcp.dll"]
+    },
+    "tpxsoft-documents": {
+      "command": "dotnet",
+      "args": ["exec", "${CLAUDE_PROJECT_DIR}/modules/documents/src/TPXSoft.Documents.Mcp/bin/Debug/net9.0/TPXSoft.Documents.Mcp.dll"]
     }
   }
 }

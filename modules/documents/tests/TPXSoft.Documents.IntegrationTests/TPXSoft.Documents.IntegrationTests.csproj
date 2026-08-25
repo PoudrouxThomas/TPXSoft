@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>TPXSoft.Documents.IntegrationTests</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/TPXSoft.Documents.Domain/TPXSoft.Documents.Domain.csproj" />
+    <ProjectReference Include="../../src/TPXSoft.Documents.Infrastructure/TPXSoft.Documents.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/TPXSoft.Documents.Api/TPXSoft.Documents.Api.csproj" />
+  </ItemGroup>
+
+</Project>

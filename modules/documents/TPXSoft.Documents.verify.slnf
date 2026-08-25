@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "TPXSoft.Documents.sln",
+    "projects": [
+      "src\\TPXSoft.Documents.Domain\\TPXSoft.Documents.Domain.csproj",
+      "src\\TPXSoft.Documents.Infrastructure\\TPXSoft.Documents.Infrastructure.csproj",
+      "src\\TPXSoft.Documents.Api\\TPXSoft.Documents.Api.csproj",
+      "tests\\TPXSoft.Documents.UnitTests\\TPXSoft.Documents.UnitTests.csproj",
+      "tests\\TPXSoft.Documents.IntegrationTests\\TPXSoft.Documents.IntegrationTests.csproj"
+    ]
+  }
+}

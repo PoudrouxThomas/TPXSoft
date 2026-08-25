@@ -1,0 +1,176 @@
+using System.ComponentModel;
+using System.Text;
+using System.Text.Json;
+using ModelContextProtocol.Server;
+using YamlDotNet.RepresentationModel;
+
+namespace TPXSoft.Documents.Mcp;
+
+/// <summary>
+/// Structural queries against contracts/documents.v1.yaml -- the contract, not the .cs source, is
+/// the answer for "what does this module look like", per PLAN.md §0.7 / modules/documents/CLAUDE.md.
+/// </summary>
+[McpServerToolType]
+public static class ContractTools
+{
+    [McpServerTool(Name = "get_openapi"), Description("Returns the raw contents of contracts/documents.v1.yaml.")]
+    public static string GetOpenApi()
+    {
+        if (!File.Exists(RepoPaths.ContractPath))
+            return "No contract found at contracts/documents.v1.yaml.";
+
+        return File.ReadAllText(RepoPaths.ContractPath);
+    }
+
+    [McpServerTool(Name = "list_endpoints"), Description("Lists every path/method/operationId/summary defined in contracts/documents.v1.yaml.")]
+    public static string ListEndpoints()
+    {
+        var root = LoadContract();
+        if (root is null)
+            return "No contract found at contracts/documents.v1.yaml.";
+
+        var paths = root.Children.TryGetValue(new YamlScalarNode("paths"), out var pathsNode)
+            ? pathsNode as YamlMappingNode
+            : null;
+
+        if (paths is null || paths.Children.Count == 0)
+            return "No paths defined in the contract yet.";
+
+        var endpoints = new List<object>();
+        foreach (var (pathKey, pathValue) in paths.Children)
+        {
+            var path = ((YamlScalarNode)pathKey).Value!;
+            if (pathValue is not YamlMappingNode methods)
+                continue;
+
+            foreach (var (methodKey, methodValue) in methods.Children)
+            {
+                var method = ((YamlScalarNode)methodKey).Value!;
+                var op = (YamlMappingNode)methodValue;
+                endpoints.Add(new
+                {
+                    method = method.ToUpperInvariant(),
+                    path,
+                    operationId = ScalarOrNull(op, "operationId"),
+                    summary = ScalarOrNull(op, "summary"),
+                });
+            }
+        }
+
+        return JsonSerializer.Serialize(endpoints, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    [McpServerTool(Name = "describe_entity"), Description("Describes a schema from contracts/documents.v1.yaml's components.schemas (e.g. 'Document', 'Folder').")]
+    public static string DescribeEntity([Description("Schema name, e.g. Document, Folder, UploadDocumentRequest")] string name)
+    {
+        var root = LoadContract();
+        if (root is null)
+            return "No contract found at contracts/documents.v1.yaml.";
+
+        var schemas = GetPath(root, "components", "schemas") as YamlMappingNode;
+        if (schemas is null)
+            return "No components.schemas defined in the contract.";
+
+        var match = schemas.Children.Keys
+            .OfType<YamlScalarNode>()
+            .FirstOrDefault(k => string.Equals(k.Value, name, StringComparison.OrdinalIgnoreCase));
+
+        if (match is null)
+        {
+            var known = string.Join(", ", schemas.Children.Keys.OfType<YamlScalarNode>().Select(k => k.Value));
+            return $"No schema named '{name}' in contracts/documents.v1.yaml. Known schemas: {known}";
+        }
+
+        var schema = (YamlMappingNode)schemas.Children[match];
+        return SerializeYamlNode(schema);
+    }
+
+    [McpServerTool(Name = "find_consumers"), Description("Greps shared/clients/** and other modules' src/** for references to an entity or field name, to find what would break if it changed.")]
+    public static string FindConsumers([Description("Entity or field name to search for, e.g. Document, folderId")] string entityOrField)
+    {
+        var repoRoot = RepoPaths.RepoRoot;
+        var searchRoots = new List<string>();
+
+        var sharedClients = Path.Combine(repoRoot, "shared", "clients");
+        if (Directory.Exists(sharedClients))
+            searchRoots.Add(sharedClients);
+
+        var modulesDir = Path.Combine(repoRoot, "modules");
+        if (Directory.Exists(modulesDir))
+        {
+            foreach (var moduleDir in Directory.GetDirectories(modulesDir))
+            {
+                if (Path.GetFileName(moduleDir) == "documents")
+                    continue; // documents' own source referencing itself isn't a "consumer"
+
+                var src = Path.Combine(moduleDir, "src");
+                if (Directory.Exists(src))
+                    searchRoots.Add(src);
+            }
+        }
+
+        if (searchRoots.Count == 0)
+            return "No shared/clients/ and no other modules exist yet -- nothing to find consumers in.";
+
+        var matches = new List<string>();
+        foreach (var root in searchRoots)
+        {
+            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                string content;
+                try
+                {
+                    content = File.ReadAllText(file);
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+
+                if (content.Contains(entityOrField, StringComparison.OrdinalIgnoreCase))
+                    matches.Add(Path.GetRelativePath(repoRoot, file).Replace('\\', '/'));
+            }
+        }
+
+        return matches.Count == 0
+            ? $"No references to '{entityOrField}' found under shared/clients/ or other modules' src/."
+            : string.Join('\n', matches);
+    }
+
+    private static YamlMappingNode? LoadContract()
+    {
+        if (!File.Exists(RepoPaths.ContractPath))
+            return null;
+
+        using var reader = new StreamReader(RepoPaths.ContractPath);
+        var yaml = new YamlStream();
+        yaml.Load(reader);
+        return yaml.Documents.Count > 0 ? yaml.Documents[0].RootNode as YamlMappingNode : null;
+    }
+
+    private static YamlNode? GetPath(YamlMappingNode root, params string[] keys)
+    {
+        YamlNode current = root;
+        foreach (var key in keys)
+        {
+            if (current is not YamlMappingNode map || !map.Children.TryGetValue(new YamlScalarNode(key), out var next))
+                return null;
+            current = next;
+        }
+
+        return current;
+    }
+
+    private static string? ScalarOrNull(YamlMappingNode node, string key) =>
+        node.Children.TryGetValue(new YamlScalarNode(key), out var value) && value is YamlScalarNode scalar
+            ? scalar.Value
+            : null;
+
+    private static string SerializeYamlNode(YamlNode node)
+    {
+        var builder = new StringBuilder();
+        using var writer = new StringWriter(builder);
+        new YamlStream(new YamlDocument(node)).Save(writer, assignAnchors: false);
+        return builder.ToString();
+    }
+}
