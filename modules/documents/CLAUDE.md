@@ -14,6 +14,14 @@ The contract (`contracts/documents.v1.yaml`) was written ahead of this scaffold 
 - **Folder** — `Id`, `OwnerUserId`, `ParentFolderId?`, `Name`, `CreatedAt`, `UpdatedAt`
 - **DocumentShare** — `Id`, `DocumentId`, `GrantedToUserId`, `GrantedByUserId`, `CreatedAt` — explicit per-user grant, independent of `Visibility` and persists regardless of it
 
+## Feature documentation
+
+[`documentation/`](documentation/) holds one file per feature — validation rules, authorization
+rules, persistence shape, error mapping, test list, and open questions per slice of the contract.
+Read [`documentation/README.md`](documentation/README.md) before implementing any endpoint here; it
+carries the shared decisions (domain model, access-rules table, `DocumentError` mapping, config
+keys, the tri-state PATCH rule) the per-feature files build on.
+
 ## Endpoints
 
 Source of truth: [`contracts/documents.v1.yaml`](../../contracts/documents.v1.yaml).
