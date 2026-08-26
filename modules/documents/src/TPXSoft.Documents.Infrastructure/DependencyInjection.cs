@@ -30,9 +30,11 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IFolderRepository, EfFolderRepository>();
+        services.AddScoped<IDocumentRepository, EfDocumentRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         services.AddScoped<FolderService>();
+        services.AddScoped<DocumentService>();
 
         return services;
     }

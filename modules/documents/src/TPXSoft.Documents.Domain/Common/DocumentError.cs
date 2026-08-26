@@ -21,5 +21,11 @@ public enum DocumentError
     FolderNotEmpty,
 
     /// <summary>Moving a folder into itself or one of its own descendants.</summary>
-    CycleDetected
+    CycleDetected,
+
+    /// <summary>Document exists but DocumentAccess.Evaluate returned None for the caller.</summary>
+    Forbidden,
+
+    /// <summary>No document with the given id.</summary>
+    NotFound
 }

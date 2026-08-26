@@ -12,4 +12,12 @@ internal static class ClaimsPrincipalExtensions
         var sub = principal.FindFirstValue("sub");
         return Guid.TryParse(sub, out var userId) ? userId : null;
     }
+
+    /// <summary>Reads the "orgId" claim issued by TPXSoft.Auth's JwtAccessTokenIssuer
+    /// (["orgId"] = user.OrgId.ToString()). Drives Organization-visibility checks.</summary>
+    public static Guid? GetOrgId(this ClaimsPrincipal principal)
+    {
+        var orgId = principal.FindFirstValue("orgId");
+        return Guid.TryParse(orgId, out var parsed) ? parsed : null;
+    }
 }

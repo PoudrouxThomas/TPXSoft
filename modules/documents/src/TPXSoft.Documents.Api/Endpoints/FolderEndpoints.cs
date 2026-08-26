@@ -99,7 +99,7 @@ public static class FolderEndpoints
     }
 
     private static async Task<IResult> ListFolderChildrenAsync(
-        Guid id, ClaimsPrincipal user, FolderService folderService, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal user, FolderService folderService, DocumentService documentService, CancellationToken cancellationToken)
     {
         var userId = user.GetUserId();
         if (userId is null)
@@ -113,9 +113,13 @@ public static class FolderEndpoints
             return ErrorResult(result.Error);
         }
 
-        // "documents" is always empty here -- the Document entity does not exist yet in this
-        // module (see FolderChildrenResponse's own doc comment).
-        var response = new FolderChildrenResponse(result.Value.Select(ToResponse).ToList(), Array.Empty<object>());
+        // GetChildFoldersAsync has already confirmed the caller owns the folder, and folder
+        // trees are single-owner (documentation/02-virtual-folders.md), so every direct child
+        // document here belongs to the caller too -- no separate access filter needed.
+        var documents = await documentService.ListByFolderAsync(id, cancellationToken);
+        var response = new FolderChildrenResponse(
+            result.Value.Select(ToResponse).ToList(),
+            documents.Select(d => DocumentEndpoints.ToResponse(d, userId.Value)).ToList());
         return Results.Ok(response);
     }
 

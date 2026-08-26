@@ -12,13 +12,8 @@ public sealed record UpdateFolderRequest(Patch<string> Name, Patch<Guid?> Parent
 public sealed record FolderResponse(
     Guid Id, Guid OwnerUserId, Guid? ParentFolderId, string Name, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
-/// <summary>
-/// Mirrors the contract's FolderChildren schema. Documents is always an empty array in this
-/// slice -- the Document entity does not exist yet in this module (folders is built first, per
-/// documentation/README.md's suggested build order); feature 01 introduces it. The JSON shape
-/// for the "documents" property is already correct so nothing here needs to change on the wire
-/// once that lands, only the handler that populates it.
-/// </summary>
-public sealed record FolderChildrenResponse(IReadOnlyList<FolderResponse> Folders, IReadOnlyList<object> Documents);
+/// <summary>Mirrors the contract's FolderChildren schema: the folder's direct child folders and
+/// direct child documents, one level each, never recursive.</summary>
+public sealed record FolderChildrenResponse(IReadOnlyList<FolderResponse> Folders, IReadOnlyList<DocumentResponse> Documents);
 
 public sealed record ErrorResponse(string Message);

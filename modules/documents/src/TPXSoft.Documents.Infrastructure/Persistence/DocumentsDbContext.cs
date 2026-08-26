@@ -11,6 +11,8 @@ public sealed class DocumentsDbContext : DbContext
 
     public DbSet<Folder> Folders => Set<Folder>();
 
+    public DbSet<Document> Documents => Set<Document>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);

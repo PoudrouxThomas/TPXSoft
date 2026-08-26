@@ -45,6 +45,7 @@ app.Use(async (context, next) =>
 });
 
 app.MapFolderEndpoints();
+app.MapDocumentEndpoints();
 
 app.Run();
 
