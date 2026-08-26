@@ -26,13 +26,7 @@ public static class FileNameSanitizer
     /// </summary>
     public static bool TryNormalize(string rawFileName, out string normalized)
     {
-        var lastSeparator = rawFileName.AsSpan().LastIndexOfAny('/', '\\');
-        var segment = lastSeparator >= 0 ? rawFileName[(lastSeparator + 1)..] : rawFileName;
-
-        var withoutControlCharacters = StripControlCharacters(segment);
-        var collapsed = CollapseWhitespace(withoutControlCharacters).Trim();
-
-        if (collapsed.Length == 0)
+        if (!TrySanitize(rawFileName, out var collapsed))
         {
             normalized = string.Empty;
             return false;
@@ -40,6 +34,37 @@ public static class FileNameSanitizer
 
         normalized = collapsed.Length > MaxLength ? TruncatePreservingExtension(collapsed, MaxLength) : collapsed;
         return true;
+    }
+
+    /// <summary>
+    /// Same sanitization as <see cref="TryNormalize"/> (path-segment stripping, control-character
+    /// removal, whitespace collapsing) but rejects rather than truncates when the result exceeds
+    /// <see cref="MaxLength"/> characters -- used by rename
+    /// (documentation/03-rename-move-delete-document.md's validation table: "truncation is
+    /// upload-only"), where silently shortening a name the caller explicitly chose would be a
+    /// surprising side effect of a PATCH.
+    /// </summary>
+    public static bool TryNormalizeStrict(string rawFileName, out string normalized)
+    {
+        if (!TrySanitize(rawFileName, out var collapsed) || collapsed.Length > MaxLength)
+        {
+            normalized = string.Empty;
+            return false;
+        }
+
+        normalized = collapsed;
+        return true;
+    }
+
+    private static bool TrySanitize(string rawFileName, out string collapsed)
+    {
+        var lastSeparator = rawFileName.AsSpan().LastIndexOfAny('/', '\\');
+        var segment = lastSeparator >= 0 ? rawFileName[(lastSeparator + 1)..] : rawFileName;
+
+        var withoutControlCharacters = StripControlCharacters(segment);
+        collapsed = CollapseWhitespace(withoutControlCharacters).Trim();
+
+        return collapsed.Length != 0;
     }
 
     private static string StripControlCharacters(string value)

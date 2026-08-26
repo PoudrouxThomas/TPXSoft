@@ -18,6 +18,7 @@ internal static class DocumentErrorMapper
         DocumentError.FolderNotEmpty => (StatusCodes.Status409Conflict, "Folder is not empty."),
         DocumentError.Forbidden => (StatusCodes.Status403Forbidden, "Caller is not allowed to perform this action on this document."),
         DocumentError.NotFound => (StatusCodes.Status404NotFound, "No document with this id."),
+        DocumentError.NotOwner => (StatusCodes.Status403Forbidden, "Caller is not the owner."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, "Unmapped DocumentError.")
     };
 }

@@ -20,6 +20,15 @@ public sealed class EfUnitOfWork : IUnitOfWork
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // A concurrent request already changed or removed the same row -- e.g. two
+            // simultaneous DELETEs on the same document racing (documentation
+            // 03-rename-move-delete-document.md's "Concurrency" section). Must be caught before
+            // the DbUpdateException clause below: DbUpdateConcurrencyException derives from it.
+            throw new ConcurrencyConflictException(
+                "A concurrent change already modified or removed this row.", ex);
+        }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23503" } pgException)
         {
             // documents.folder_id and folders.parent_folder_id are both ON DELETE RESTRICT --

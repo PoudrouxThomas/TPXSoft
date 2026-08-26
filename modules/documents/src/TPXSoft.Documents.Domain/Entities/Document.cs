@@ -67,4 +67,22 @@ public sealed class Document
             UpdatedAt = now
         };
     }
+
+    /// <param name="fileName">Must already be validated/normalized by the caller (see
+    /// Domain.Common.FileNameSanitizer.TryNormalizeStrict -- rename does not truncate, unlike
+    /// upload).</param>
+    public void Rename(string fileName, TimeProvider timeProvider)
+    {
+        FileName = fileName;
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
+
+    /// <param name="folderId">Null moves the document to the owner's root. Caller is responsible
+    /// for ownership checks before calling this -- Document does not know about Folder, same as
+    /// Create.</param>
+    public void MoveTo(Guid? folderId, TimeProvider timeProvider)
+    {
+        FolderId = folderId;
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
 }

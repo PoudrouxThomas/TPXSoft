@@ -29,4 +29,10 @@ public interface IDocumentRepository
     /// same document id in the same unit of work (documentation/01-upload-document.md's
     /// "Persistence" section: one transaction for both rows).</summary>
     void AddContent(DocumentContent content);
+
+    /// <summary>Hard-deletes the document row. Its document_contents row (and, once feature 04
+    /// lands, its document_shares rows) cascade via the database's own ON DELETE CASCADE --
+    /// nothing else needs to be removed explicitly (documentation/03-rename-move-delete-document.md's
+    /// "Delete" section).</summary>
+    void Remove(Document document);
 }

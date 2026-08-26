@@ -115,4 +115,113 @@ public sealed class DocumentService
 
         return Result<Document>.Success(document);
     }
+
+    /// <summary>
+    /// Tri-state update: <paramref name="fileNameIsSet"/>/<paramref name="folderIdIsSet"/> tell
+    /// apart "absent from the PATCH body" (leave alone) from "present" (apply, even when the
+    /// present value is null -- move to root). Owner-only, and load-and-authorize happens before
+    /// any body validation so a non-owner sending a malformed payload still gets 403, not 400
+    /// (documentation/03-rename-move-delete-document.md's "Order of checks matters" rule). A move
+    /// never touches Visibility, PublicLinkToken, SizeBytes, ContentType, or share grants.
+    /// </summary>
+    public async Task<Result<Document>> UpdateAsync(
+        Guid callerUserId,
+        Guid documentId,
+        bool fileNameIsSet,
+        string? fileName,
+        bool folderIdIsSet,
+        Guid? folderId,
+        CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result<Document>.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result<Document>.Failure(DocumentError.NotOwner);
+        }
+
+        string? normalizedFileName = null;
+        if (fileNameIsSet)
+        {
+            // No truncation here, unlike upload -- an overlong name after sanitization is
+            // rejected outright rather than silently shortened (doc 03's validation table).
+            if (fileName is null || !FileNameSanitizer.TryNormalizeStrict(fileName, out normalizedFileName))
+            {
+                return Result<Document>.Failure(DocumentError.ValidationFailed);
+            }
+        }
+
+        if (folderIdIsSet && folderId is { } newFolderId)
+        {
+            // updateDocument defines both 403 and 404, unlike upload's single generic 400 -- a
+            // missing folder is 404, a foreign folder is 403 (doc 03's "Unlike upload" note).
+            var folder = await _folderRepository.GetByIdAsync(newFolderId, cancellationToken);
+            if (folder is null)
+            {
+                return Result<Document>.Failure(DocumentError.FolderNotFound);
+            }
+
+            if (folder.OwnerUserId != callerUserId)
+            {
+                return Result<Document>.Failure(DocumentError.FolderForbidden);
+            }
+        }
+
+        if (fileNameIsSet)
+        {
+            document.Rename(normalizedFileName!, _timeProvider);
+        }
+
+        if (folderIdIsSet)
+        {
+            document.MoveTo(folderId, _timeProvider);
+        }
+
+        if (fileNameIsSet || folderIdIsSet)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return Result<Document>.Success(document);
+    }
+
+    /// <summary>
+    /// Hard delete, owner-only. Not idempotent -- a repeat DELETE on an already-gone id is 404
+    /// (doc 03), unlike share revocation. document_contents (and, once feature 04 lands,
+    /// document_shares) cascade via the database's own ON DELETE CASCADE; nothing here removes
+    /// them explicitly.
+    /// </summary>
+    public async Task<Result> DeleteAsync(Guid callerUserId, Guid documentId, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result.Failure(DocumentError.NotOwner);
+        }
+
+        _documentRepository.Remove(document);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // A race lost to a simultaneous delete of the same document -- the row is gone
+            // either way, which is what a 404 communicates to the loser (doc 03's "Concurrency"
+            // section).
+            return Result.Failure(DocumentError.NotFound);
+        }
+
+        return Result.Success();
+    }
 }

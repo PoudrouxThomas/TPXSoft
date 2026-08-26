@@ -48,4 +48,6 @@ public sealed class EfDocumentRepository : IDocumentRepository
     public void Add(Document document) => _dbContext.Documents.Add(document);
 
     public void AddContent(DocumentContent content) => _dbContext.DocumentContents.Add(content);
+
+    public void Remove(Document document) => _dbContext.Documents.Remove(document);
 }

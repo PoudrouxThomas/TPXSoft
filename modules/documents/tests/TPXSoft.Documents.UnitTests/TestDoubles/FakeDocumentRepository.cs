@@ -14,6 +14,8 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
 
     public List<DocumentContent> AddedContent { get; } = new();
 
+    public List<Document> Removed { get; } = new();
+
     /// <summary>Pre-populates the repository as if this document already existed before the test ran.</summary>
     public void Seed(Document document) => _documents.Add(document);
 
@@ -60,4 +62,10 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
     }
 
     public void AddContent(DocumentContent content) => AddedContent.Add(content);
+
+    public void Remove(Document document)
+    {
+        Removed.Add(document);
+        _documents.Remove(document);
+    }
 }

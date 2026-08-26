@@ -27,5 +27,10 @@ public enum DocumentError
     Forbidden,
 
     /// <summary>No document with the given id.</summary>
-    NotFound
+    NotFound,
+
+    /// <summary>Document exists but the caller is not its owner -- the owner-only check used by
+    /// updateDocument/deleteDocument (documentation/03-rename-move-delete-document.md), distinct
+    /// from <see cref="Forbidden"/>'s broader "cannot see this document at all" message.</summary>
+    NotOwner
 }

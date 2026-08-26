@@ -15,6 +15,8 @@ public static class DocumentEndpoints
         endpoints.MapPost("/documents", UploadDocumentAsync).RequireAuthorization();
         endpoints.MapGet("/documents", ListDocumentsAsync).RequireAuthorization();
         endpoints.MapGet("/documents/{id:guid}", GetDocumentAsync).RequireAuthorization();
+        endpoints.MapPatch("/documents/{id:guid}", UpdateDocumentAsync).RequireAuthorization();
+        endpoints.MapDelete("/documents/{id:guid}", DeleteDocumentAsync).RequireAuthorization();
 
         return endpoints;
     }
@@ -128,6 +130,40 @@ public static class DocumentEndpoints
 
         var result = await documentService.GetAsync(userId!.Value, orgId!.Value, id, cancellationToken);
         return result.IsFailure ? ErrorResult(result.Error) : Results.Ok(ToResponse(result.Value, userId.Value));
+    }
+
+    private static async Task<IResult> UpdateDocumentAsync(
+        Guid id, UpdateDocumentRequest request, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.UpdateAsync(
+            userId!.Value,
+            id,
+            request.FileName.IsSet,
+            request.FileName.Value,
+            request.FolderId.IsSet,
+            request.FolderId.Value,
+            cancellationToken);
+
+        return result.IsFailure ? ErrorResult(result.Error) : Results.Ok(ToResponse(result.Value, userId.Value));
+    }
+
+    private static async Task<IResult> DeleteDocumentAsync(
+        Guid id, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.DeleteAsync(userId!.Value, id, cancellationToken);
+        return result.IsFailure ? ErrorResult(result.Error) : Results.NoContent();
     }
 
     private static (Guid? UserId, Guid? OrgId, IResult? Unauthorized) GetCaller(ClaimsPrincipal user)

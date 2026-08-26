@@ -91,4 +91,51 @@ public sealed class FileNameSanitizerTests
         Assert.True(ok);
         Assert.Equal("my report.pdf", normalized);
     }
+
+    // documentation/03-rename-move-delete-document.md: "truncation is upload-only" -- rename uses
+    // TryNormalizeStrict, which applies the exact same sanitization as TryNormalize but rejects
+    // rather than truncates an overlong result.
+
+    [Fact]
+    public void TryNormalizeStrict_OverMaxLength_ReturnsFalse_RatherThanTruncating()
+    {
+        var longName = new string('a', 300) + ".pdf";
+
+        var ok = FileNameSanitizer.TryNormalizeStrict(longName, out var normalized);
+
+        Assert.False(ok);
+        Assert.Equal(string.Empty, normalized);
+    }
+
+    [Fact]
+    public void TryNormalizeStrict_AtExactlyMaxLength_Succeeds()
+    {
+        var exactly255 = new string('a', 251) + ".pdf";
+        Assert.Equal(FileNameSanitizer.MaxLength, exactly255.Length);
+
+        var ok = FileNameSanitizer.TryNormalizeStrict(exactly255, out var normalized);
+
+        Assert.True(ok);
+        Assert.Equal(exactly255, normalized);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void TryNormalizeStrict_EmptyOrWhitespace_ReturnsFalse(string rawFileName)
+    {
+        var ok = FileNameSanitizer.TryNormalizeStrict(rawFileName, out var normalized);
+
+        Assert.False(ok);
+        Assert.Equal(string.Empty, normalized);
+    }
+
+    [Fact]
+    public void TryNormalizeStrict_StripsPathSeparatorsAndControlCharacters_SameAsTryNormalize()
+    {
+        var ok = FileNameSanitizer.TryNormalizeStrict(@"..\..\etc\passwd", out var normalized);
+
+        Assert.True(ok);
+        Assert.Equal("passwd", normalized);
+    }
 }
