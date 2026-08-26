@@ -85,4 +85,19 @@ public sealed class Document
         FolderId = folderId;
         UpdatedAt = timeProvider.GetUtcNow();
     }
+
+    /// <summary>
+    /// Visibility and DocumentShare grants are independent axes -- this never touches grants
+    /// (documentation/04-sharing-and-visibility.md's "Two independent axes" section).
+    /// </summary>
+    /// <param name="publicLinkToken">Must already be a freshly generated token (see
+    /// Domain.Common.PublicLinkTokenGenerator) when <paramref name="visibility"/> is PublicLink,
+    /// and null otherwise -- this method performs the state transition only, it does not generate
+    /// the token itself, same as Rename/MoveTo taking already-normalized input.</param>
+    public void ChangeVisibility(Visibility visibility, string? publicLinkToken, TimeProvider timeProvider)
+    {
+        Visibility = visibility;
+        PublicLinkToken = publicLinkToken;
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
 }

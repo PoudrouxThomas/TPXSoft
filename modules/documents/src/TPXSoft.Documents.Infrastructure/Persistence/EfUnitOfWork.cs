@@ -37,5 +37,14 @@ public sealed class EfUnitOfWork : IUnitOfWork
             throw new ForeignKeyConstraintViolationException(
                 "A database foreign-key constraint blocked this change.", pgException);
         }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" } pgException)
+        {
+            // document_shares' unique (document_id, granted_to_user_id) index -- two concurrent
+            // POST /documents/{id}/shares requests for the same pair racing past the
+            // service-level check-then-insert (documentation/04-sharing-and-visibility.md's
+            // "second grant... is 409" rule).
+            throw new UniqueConstraintViolationException(
+                "A database unique constraint blocked this change.", pgException);
+        }
     }
 }

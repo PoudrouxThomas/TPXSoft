@@ -17,6 +17,10 @@ public static class DocumentEndpoints
         endpoints.MapGet("/documents/{id:guid}", GetDocumentAsync).RequireAuthorization();
         endpoints.MapPatch("/documents/{id:guid}", UpdateDocumentAsync).RequireAuthorization();
         endpoints.MapDelete("/documents/{id:guid}", DeleteDocumentAsync).RequireAuthorization();
+        endpoints.MapPut("/documents/{id:guid}/visibility", SetDocumentVisibilityAsync).RequireAuthorization();
+        endpoints.MapGet("/documents/{id:guid}/shares", ListDocumentSharesAsync).RequireAuthorization();
+        endpoints.MapPost("/documents/{id:guid}/shares", ShareDocumentWithUserAsync).RequireAuthorization();
+        endpoints.MapDelete("/documents/{id:guid}/shares/{userId:guid}", RevokeDocumentShareAsync).RequireAuthorization();
 
         return endpoints;
     }
@@ -166,6 +170,63 @@ public static class DocumentEndpoints
         return result.IsFailure ? ErrorResult(result.Error) : Results.NoContent();
     }
 
+    private static async Task<IResult> SetDocumentVisibilityAsync(
+        Guid id, SetVisibilityRequest request, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.SetVisibilityAsync(userId!.Value, id, request.Visibility, cancellationToken);
+        return result.IsFailure ? ErrorResult(result.Error) : Results.Ok(ToResponse(result.Value, userId.Value));
+    }
+
+    private static async Task<IResult> ListDocumentSharesAsync(
+        Guid id, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.ListSharesAsync(userId!.Value, id, cancellationToken);
+        return result.IsFailure ? ErrorResult(result.Error) : Results.Ok(result.Value.Select(ToShareResponse));
+    }
+
+    private static async Task<IResult> ShareDocumentWithUserAsync(
+        Guid id, ShareDocumentRequest request, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.ShareAsync(userId!.Value, id, request.UserId, cancellationToken);
+        if (result.IsFailure)
+        {
+            return ErrorResult(result.Error);
+        }
+
+        return Results.Json(ToShareResponse(result.Value), statusCode: StatusCodes.Status201Created);
+    }
+
+    private static async Task<IResult> RevokeDocumentShareAsync(
+        Guid id, Guid userId, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (callerUserId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.RevokeShareAsync(callerUserId!.Value, id, userId, cancellationToken);
+        return result.IsFailure ? ErrorResult(result.Error) : Results.NoContent();
+    }
+
     private static (Guid? UserId, Guid? OrgId, IResult? Unauthorized) GetCaller(ClaimsPrincipal user)
     {
         var userId = user.GetUserId();
@@ -199,4 +260,7 @@ public static class DocumentEndpoints
         document.OwnerUserId == callerUserId ? document.PublicLinkToken : null,
         document.CreatedAt,
         document.UpdatedAt);
+
+    private static DocumentShareResponse ToShareResponse(DocumentShare share) =>
+        new(share.Id, share.DocumentId, share.GrantedToUserId, share.GrantedByUserId, share.CreatedAt);
 }

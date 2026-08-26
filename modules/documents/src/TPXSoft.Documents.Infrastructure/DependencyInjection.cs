@@ -36,6 +36,7 @@ public static class DependencyInjection
 
         services.AddScoped<IFolderRepository, EfFolderRepository>();
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
+        services.AddScoped<IDocumentShareRepository, EfDocumentShareRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         services.AddScoped<FolderService>();

@@ -15,6 +15,8 @@ public sealed class DocumentsDbContext : DbContext
 
     public DbSet<DocumentContent> DocumentContents => Set<DocumentContent>();
 
+    public DbSet<DocumentShare> DocumentShares => Set<DocumentShare>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);

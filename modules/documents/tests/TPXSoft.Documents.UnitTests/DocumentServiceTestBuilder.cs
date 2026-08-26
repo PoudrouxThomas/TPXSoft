@@ -14,9 +14,12 @@ internal sealed class DocumentServiceTestBuilder
 
     public FakeFolderRepository FolderRepository { get; } = new();
 
+    public FakeDocumentShareRepository DocumentShareRepository { get; } = new();
+
     public FakeUnitOfWork UnitOfWork { get; } = new();
 
     public FakeTimeProvider TimeProvider { get; } = new(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
-    public DocumentService Build() => new(DocumentRepository, FolderRepository, UnitOfWork, TimeProvider);
+    public DocumentService Build() =>
+        new(DocumentRepository, FolderRepository, DocumentShareRepository, UnitOfWork, TimeProvider);
 }

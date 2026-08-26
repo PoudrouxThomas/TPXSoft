@@ -27,3 +27,20 @@ public sealed record DocumentResponse(
     string? PublicLinkToken,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+/// <summary>Visibility is bound as the enum itself (not a Patch{T} or a raw string) so that the
+/// JsonStringEnumConverter registered in Program.cs rejects an unmapped value (e.g. "public")
+/// outright during body binding instead of silently deserializing it to 0/Private
+/// (documentation/04-sharing-and-visibility.md's setDocumentVisibility validation table).</summary>
+public sealed record SetVisibilityRequest(Visibility Visibility);
+
+/// <summary>GrantedByUserId is deliberately not here -- it is always the caller, read off the
+/// bearer token, never a body field (documentation 04's shareDocumentWithUser section).</summary>
+public sealed record ShareDocumentRequest(Guid UserId);
+
+public sealed record DocumentShareResponse(
+    Guid Id,
+    Guid DocumentId,
+    Guid GrantedToUserId,
+    Guid GrantedByUserId,
+    DateTimeOffset CreatedAt);

@@ -32,5 +32,10 @@ public enum DocumentError
     /// <summary>Document exists but the caller is not its owner -- the owner-only check used by
     /// updateDocument/deleteDocument (documentation/03-rename-move-delete-document.md), distinct
     /// from <see cref="Forbidden"/>'s broader "cannot see this document at all" message.</summary>
-    NotOwner
+    NotOwner,
+
+    /// <summary>A DocumentShare already exists for (documentId, grantedToUserId) -- a second grant
+    /// for the same user is a conflict, not an idempotent success
+    /// (documentation/04-sharing-and-visibility.md's shareDocumentWithUser section).</summary>
+    ShareAlreadyExists
 }

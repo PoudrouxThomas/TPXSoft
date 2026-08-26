@@ -13,17 +13,20 @@ public sealed class DocumentService
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IFolderRepository _folderRepository;
+    private readonly IDocumentShareRepository _documentShareRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
     public DocumentService(
         IDocumentRepository documentRepository,
         IFolderRepository folderRepository,
+        IDocumentShareRepository documentShareRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _documentRepository = documentRepository;
         _folderRepository = folderRepository;
+        _documentShareRepository = documentShareRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
@@ -220,6 +223,128 @@ public sealed class DocumentService
             // either way, which is what a 404 communicates to the loser (doc 03's "Concurrency"
             // section).
             return Result.Failure(DocumentError.NotFound);
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Owner-only. Going PublicLink always (re)generates a fresh token, even if the document is
+    /// already PublicLink -- doubles as the only way to rotate a leaked link, since there is no
+    /// dedicated rotate endpoint. Going Private or Organization clears the token. Never touches
+    /// share grants (documentation/04-sharing-and-visibility.md's setDocumentVisibility section).
+    /// </summary>
+    public async Task<Result<Document>> SetVisibilityAsync(
+        Guid callerUserId, Guid documentId, Visibility visibility, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result<Document>.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result<Document>.Failure(DocumentError.NotOwner);
+        }
+
+        var publicLinkToken = visibility == Visibility.PublicLink ? PublicLinkTokenGenerator.Generate() : null;
+        document.ChangeVisibility(visibility, publicLinkToken, _timeProvider);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result<Document>.Success(document);
+    }
+
+    /// <summary>Owner-only -- 403 for everyone else, including the grantees themselves
+    /// (documentation/04-sharing-and-visibility.md's listDocumentShares section).</summary>
+    public async Task<Result<IReadOnlyList<DocumentShare>>> ListSharesAsync(
+        Guid callerUserId, Guid documentId, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result<IReadOnlyList<DocumentShare>>.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result<IReadOnlyList<DocumentShare>>.Failure(DocumentError.NotOwner);
+        }
+
+        var shares = await _documentShareRepository.ListByDocumentAsync(documentId, cancellationToken);
+        return Result<IReadOnlyList<DocumentShare>>.Success(shares);
+    }
+
+    /// <summary>
+    /// Owner-only. Self-share is ValidationFailed (400) -- the owner already has access. A second
+    /// grant for the same user is ShareAlreadyExists (409), backed by the unique
+    /// (document_id, granted_to_user_id) index and the UniqueConstraintViolationException catch
+    /// below, not just this method's own check-then-insert -- two concurrent requests would both
+    /// pass a check alone. targetUserId is never verified against a users table; this module has
+    /// none (documentation/04-sharing-and-visibility.md's shareDocumentWithUser section and Open
+    /// questions).
+    /// </summary>
+    public async Task<Result<DocumentShare>> ShareAsync(
+        Guid callerUserId, Guid documentId, Guid targetUserId, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result<DocumentShare>.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result<DocumentShare>.Failure(DocumentError.NotOwner);
+        }
+
+        if (targetUserId == callerUserId)
+        {
+            return Result<DocumentShare>.Failure(DocumentError.ValidationFailed);
+        }
+
+        var share = DocumentShare.Create(documentId, targetUserId, callerUserId, _timeProvider);
+        _documentShareRepository.Add(share);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintViolationException)
+        {
+            return Result<DocumentShare>.Failure(DocumentError.ShareAlreadyExists);
+        }
+
+        return Result<DocumentShare>.Success(share);
+    }
+
+    /// <summary>
+    /// Owner-only, idempotent by contract: 204 whether or not the grant existed, unlike
+    /// DeleteAsync's 404-on-repeat (documentation/04-sharing-and-visibility.md's
+    /// revokeDocumentShare section -- the asymmetry with delete-document is deliberate). The
+    /// document itself must still exist and belong to the caller, or this returns NotFound/NotOwner
+    /// same as every other owner-only route.
+    /// </summary>
+    public async Task<Result> RevokeShareAsync(
+        Guid callerUserId, Guid documentId, Guid targetUserId, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result.Failure(DocumentError.NotOwner);
+        }
+
+        var share = await _documentShareRepository.GetAsync(documentId, targetUserId, cancellationToken);
+        if (share is not null)
+        {
+            _documentShareRepository.Remove(share);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return Result.Success();
