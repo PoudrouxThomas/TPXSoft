@@ -23,4 +23,12 @@ public sealed class DocumentContent
         DocumentId = documentId,
         Bytes = bytes
     };
+
+    /// <summary>
+    /// Updates the row in place -- called by DocumentService.ReplaceContentAsync on an
+    /// already-loaded, EF-tracked instance so SaveChangesAsync emits an UPDATE, not a
+    /// delete-then-insert (documentation/06-update-document-content.md's "Implementation"
+    /// section). Does not touch DocumentId.
+    /// </summary>
+    public void ReplaceBytes(byte[] bytes) => Bytes = bytes;
 }

@@ -9,6 +9,8 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
 {
     private readonly List<Document> _documents = new();
 
+    private readonly List<DocumentContent> _contents = new();
+
     /// <summary>Only documents added via <see cref="Add"/> during the test -- excludes seeded ones.</summary>
     public List<Document> Added { get; } = new();
 
@@ -18,6 +20,11 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
 
     /// <summary>Pre-populates the repository as if this document already existed before the test ran.</summary>
     public void Seed(Document document) => _documents.Add(document);
+
+    /// <summary>Pre-populates the document_contents "table" as if this row already existed before
+    /// the test ran -- mirrors <see cref="Seed"/> but for content, needed by
+    /// GetContentAsync/ReplaceContentAsync tests.</summary>
+    public void SeedContent(DocumentContent content) => _contents.Add(content);
 
     public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_documents.SingleOrDefault(d => d.Id == id));
@@ -61,7 +68,14 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
         _documents.Add(document);
     }
 
-    public void AddContent(DocumentContent content) => AddedContent.Add(content);
+    public void AddContent(DocumentContent content)
+    {
+        AddedContent.Add(content);
+        _contents.Add(content);
+    }
+
+    public Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken) =>
+        Task.FromResult(_contents.SingleOrDefault(c => c.DocumentId == documentId));
 
     public void Remove(Document document)
     {

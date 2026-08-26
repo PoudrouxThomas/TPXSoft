@@ -49,5 +49,8 @@ public sealed class EfDocumentRepository : IDocumentRepository
 
     public void AddContent(DocumentContent content) => _dbContext.DocumentContents.Add(content);
 
+    public Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken) =>
+        _dbContext.DocumentContents.SingleOrDefaultAsync(c => c.DocumentId == documentId, cancellationToken);
+
     public void Remove(Document document) => _dbContext.Documents.Remove(document);
 }

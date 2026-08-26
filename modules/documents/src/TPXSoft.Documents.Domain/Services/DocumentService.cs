@@ -91,10 +91,6 @@ public sealed class DocumentService
         Guid callerUserId, Guid callerOrgId, Guid? folderId, bool mine, CancellationToken cancellationToken) =>
         _documentRepository.ListAsync(callerUserId, callerOrgId, folderId, mine, cancellationToken);
 
-    /// <summary>404 if the document does not exist at all, 403 if it exists but
-    /// DocumentAccess.Evaluate returns None for the caller, 200 otherwise. hasShareGrant is
-    /// always false for now -- DocumentShare does not exist yet (files 03-06 introduce it).
-    /// </summary>
     /// <summary>Direct child documents of a folder, one level, never recursive -- used by
     /// GET /folders/{id}/children after FolderService has already authorized the folder itself.
     /// Folder trees are single-owner, so no separate document-level access filter applies here.
@@ -102,6 +98,8 @@ public sealed class DocumentService
     public Task<IReadOnlyList<Document>> ListByFolderAsync(Guid folderId, CancellationToken cancellationToken) =>
         _documentRepository.ListByFolderAsync(folderId, cancellationToken);
 
+    /// <summary>404 if the document does not exist at all, 403 if it exists but
+    /// DocumentAccess.Evaluate returns None for the caller, 200 otherwise.</summary>
     public async Task<Result<Document>> GetAsync(Guid callerUserId, Guid callerOrgId, Guid id, CancellationToken cancellationToken)
     {
         var document = await _documentRepository.GetByIdAsync(id, cancellationToken);
@@ -110,7 +108,8 @@ public sealed class DocumentService
             return Result<Document>.Failure(DocumentError.NotFound);
         }
 
-        var access = DocumentAccessEvaluator.Evaluate(document, callerUserId, callerOrgId, hasShareGrant: false);
+        var share = await _documentShareRepository.GetAsync(document.Id, callerUserId, cancellationToken);
+        var access = DocumentAccessEvaluator.Evaluate(document, callerUserId, callerOrgId, hasShareGrant: share is not null);
         if (access == DocumentAccess.None)
         {
             return Result<Document>.Failure(DocumentError.Forbidden);
@@ -250,6 +249,62 @@ public sealed class DocumentService
 
         var publicLinkToken = visibility == Visibility.PublicLink ? PublicLinkTokenGenerator.Generate() : null;
         document.ChangeVisibility(visibility, publicLinkToken, _timeProvider);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result<Document>.Success(document);
+    }
+
+    /// <summary>
+    /// Owner-only wholesale replace of a document's bytes (documentation/06-update-document-content.md).
+    /// Only ContentType, SizeBytes, UpdatedAt, and the document_contents row change -- FileName,
+    /// FolderId, Visibility, PublicLinkToken, CreatedAt, and share grants are left untouched (the
+    /// feature file's "What changes and what does not" table). Load-and-authorize happens before
+    /// any body validation, same ordering rule as UpdateAsync (doc 03's "Order of checks matters")
+    /// -- a non-owner sending a missing/empty/oversized file still gets 403, not 400.
+    /// <paramref name="fileLength"/> covers both "file part present" and "file length > 0" from
+    /// the validation table: the endpoint passes 0 when no file part was sent at all, which is
+    /// indistinguishable in outcome from an empty part -- both map to the same ValidationFailed.
+    /// Both writes (Document metadata and DocumentContent bytes) go through the same unit of work.
+    /// </summary>
+    public async Task<Result<Document>> ReplaceContentAsync(
+        Guid callerUserId,
+        Guid documentId,
+        string? rawContentType,
+        long fileLength,
+        byte[] content,
+        long maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            return Result<Document>.Failure(DocumentError.NotFound);
+        }
+
+        if (document.OwnerUserId != callerUserId)
+        {
+            return Result<Document>.Failure(DocumentError.NotOwner);
+        }
+
+        if (fileLength <= 0 || fileLength > maxUploadBytes)
+        {
+            return Result<Document>.Failure(DocumentError.ValidationFailed);
+        }
+
+        var existingContent = await _documentRepository.GetContentAsync(documentId, cancellationToken);
+        if (existingContent is null)
+        {
+            // Should not happen -- the document and its content row are created together and
+            // share the same lifetime (documentation/README.md's "Why content is a separate
+            // table") -- guarded rather than surfacing a null-ref as an unhandled 500.
+            return Result<Document>.Failure(DocumentError.NotFound);
+        }
+
+        var contentType = ContentTypeSanitizer.Normalize(rawContentType);
+
+        document.ReplaceContent(contentType, fileLength, _timeProvider);
+        existingContent.ReplaceBytes(content);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

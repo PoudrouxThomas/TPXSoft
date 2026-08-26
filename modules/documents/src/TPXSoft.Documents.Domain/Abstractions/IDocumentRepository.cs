@@ -30,6 +30,13 @@ public interface IDocumentRepository
     /// "Persistence" section: one transaction for both rows).</summary>
     void AddContent(DocumentContent content);
 
+    /// <summary>Loads the document_contents row as an EF-tracked instance so the caller can mutate
+    /// its Bytes in place via <see cref="DocumentContent.ReplaceBytes"/> and have the same
+    /// SaveChangesAsync call emit an UPDATE (documentation/06-update-document-content.md's
+    /// "Implementation" section). Null only if the document row exists without a matching content
+    /// row, which should not happen given they are always created together.</summary>
+    Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken);
+
     /// <summary>Hard-deletes the document row. Its document_contents row (and, once feature 04
     /// lands, its document_shares rows) cascade via the database's own ON DELETE CASCADE --
     /// nothing else needs to be removed explicitly (documentation/03-rename-move-delete-document.md's

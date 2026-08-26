@@ -17,6 +17,7 @@ public static class DocumentEndpoints
         endpoints.MapGet("/documents/{id:guid}", GetDocumentAsync).RequireAuthorization();
         endpoints.MapPatch("/documents/{id:guid}", UpdateDocumentAsync).RequireAuthorization();
         endpoints.MapDelete("/documents/{id:guid}", DeleteDocumentAsync).RequireAuthorization();
+        endpoints.MapPut("/documents/{id:guid}/content", ReplaceDocumentContentAsync).RequireAuthorization();
         endpoints.MapPut("/documents/{id:guid}/visibility", SetDocumentVisibilityAsync).RequireAuthorization();
         endpoints.MapGet("/documents/{id:guid}/shares", ListDocumentSharesAsync).RequireAuthorization();
         endpoints.MapPost("/documents/{id:guid}/shares", ShareDocumentWithUserAsync).RequireAuthorization();
@@ -168,6 +169,64 @@ public static class DocumentEndpoints
 
         var result = await documentService.DeleteAsync(userId!.Value, id, cancellationToken);
         return result.IsFailure ? ErrorResult(result.Error) : Results.NoContent();
+    }
+
+    /// <summary>
+    /// Reads the multipart form by hand, same shape as UploadDocumentAsync, but defers every
+    /// body-related failure (missing part, empty part, oversized part) to DocumentService --
+    /// authorize-before-validate-body means a non-owner must get 403 regardless of what they sent
+    /// (documentation/06-update-document-content.md's "Validation" section). A structurally
+    /// malformed multipart body (not HasFormContentType, or ReadFormAsync throwing
+    /// InvalidDataException because FormOptions.MultipartBodyLengthLimit was exceeded) is treated
+    /// the same as "no file part" rather than short-circuited early -- it carries no document
+    /// state to leak, so deferring it is free and keeps a single code path.
+    /// </summary>
+    private static async Task<IResult> ReplaceDocumentContentAsync(
+        Guid id,
+        HttpRequest request,
+        ClaimsPrincipal user,
+        DocumentService documentService,
+        IOptions<DocumentsOptions> documentsOptions,
+        CancellationToken cancellationToken)
+    {
+        var (userId, _, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        IFormFile? file = null;
+        if (request.HasFormContentType)
+        {
+            try
+            {
+                var form = await request.ReadFormAsync(cancellationToken);
+                file = form.Files["file"];
+            }
+            catch (InvalidDataException)
+            {
+                file = null;
+            }
+        }
+
+        var content = Array.Empty<byte>();
+        if (file is { Length: > 0 })
+        {
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, cancellationToken);
+            content = buffer.ToArray();
+        }
+
+        var result = await documentService.ReplaceContentAsync(
+            userId!.Value,
+            id,
+            file?.ContentType,
+            file?.Length ?? 0,
+            content,
+            documentsOptions.Value.MaxUploadBytes,
+            cancellationToken);
+
+        return result.IsFailure ? ErrorResult(result.Error) : Results.Ok(ToResponse(result.Value, userId.Value));
     }
 
     private static async Task<IResult> SetDocumentVisibilityAsync(

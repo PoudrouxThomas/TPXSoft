@@ -92,14 +92,28 @@ public sealed class DocumentEndpointsTests : DocumentsIntegrationTestBase
         Assert.DoesNotContain(body!, d => d.Id == orgVisibleDoc.Id);
     }
 
-    [Fact(Skip = "Requires an explicit share grant (DocumentShare / POST /documents/{id}/shares), " +
-        "which does not exist yet -- that's documentation/04-sharing-and-visibility.md. " +
-        "DocumentAccessEvaluator.Evaluate already supports hasShareGrant: true (see the Domain " +
-        "unit tests), but DocumentService has no way to produce that input until feature 04 lands " +
-        "a share-grant lookup. Un-skip once feature 04 is built.")]
-    public Task ListDocuments_Grantee_DoesNotSeeGrantedDocument_ButGetDocumentReturns200()
+    [Fact]
+    public async Task ListDocuments_Grantee_DoesNotSeeGrantedDocument_ButGetDocumentReturns200()
     {
-        return Task.CompletedTask;
+        var owner = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        using var ownerClient = CreateAuthenticatedClient(owner, orgId);
+        var privateDoc = await SeedDocumentAsync(owner, orgId, folderId: null, Visibility.Private);
+
+        var grantee = Guid.NewGuid();
+        var shareResponse = await ownerClient.PostAsJsonAsync(
+            $"/documents/{privateDoc.Id}/shares", new { userId = grantee });
+        Assert.Equal(HttpStatusCode.Created, shareResponse.StatusCode);
+
+        using var granteeClient = CreateAuthenticatedClient(grantee);
+
+        var listResponse = await granteeClient.GetAsync("/documents");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var listBody = await listResponse.Content.ReadFromJsonAsync<List<DocumentResponse>>(ResponseJsonOptions);
+        Assert.DoesNotContain(listBody!, d => d.Id == privateDoc.Id);
+
+        var getResponse = await granteeClient.GetAsync($"/documents/{privateDoc.Id}");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
     [Fact]

@@ -100,4 +100,21 @@ public sealed class Document
         PublicLinkToken = publicLinkToken;
         UpdatedAt = timeProvider.GetUtcNow();
     }
+
+    /// <summary>
+    /// Wholesale replace of the document's bytes (documentation/06-update-document-content.md).
+    /// Only ContentType, SizeBytes, and UpdatedAt change here; FileName, FolderId, Visibility,
+    /// PublicLinkToken, and CreatedAt are deliberately untouched -- see the feature file's "What
+    /// changes and what does not" table. The actual bytes live in DocumentContent and are updated
+    /// separately by the caller in the same unit of work.
+    /// </summary>
+    /// <param name="contentType">Must already be sanitized by the caller (see
+    /// Domain.Common.ContentTypeSanitizer.Normalize), same convention as Rename's fileName.</param>
+    /// <param name="sizeBytes">The actual byte count written, not a client-supplied header.</param>
+    public void ReplaceContent(string contentType, long sizeBytes, TimeProvider timeProvider)
+    {
+        ContentType = contentType;
+        SizeBytes = sizeBytes;
+        UpdatedAt = timeProvider.GetUtcNow();
+    }
 }

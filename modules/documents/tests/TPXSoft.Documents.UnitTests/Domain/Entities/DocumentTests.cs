@@ -115,4 +115,50 @@ public sealed class DocumentTests
         Assert.Equal(1024, document.SizeBytes);
         Assert.Equal(createdAt, document.CreatedAt);
     }
+
+    // ReplaceContent itself, like Rename/MoveTo, trusts an already-sanitized contentType --
+    // ContentTypeSanitizer.Normalize is what falls back to application/octet-stream for blank or
+    // malformed input (see ContentTypeSanitizerTests), and
+    // DocumentServiceReplaceContentTests exercises that fallback through
+    // DocumentService.ReplaceContentAsync (documentation/06-update-document-content.md's
+    // "Tests -> Unit" section, third bullet).
+
+    [Fact]
+    public void ReplaceContent_UpdatesContentTypeSizeBytesAndUpdatedAt()
+    {
+        // documentation/06-update-document-content.md's "Tests -> Unit" section, first bullet.
+        var createdAt = new DateTimeOffset(2026, 3, 1, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(createdAt);
+        var document = Document.Create(
+            Guid.NewGuid(), Guid.NewGuid(), null, "report.pdf", "application/pdf", 1024, Visibility.Private, timeProvider);
+
+        var replacedAt = createdAt.AddMinutes(5);
+        timeProvider.SetUtcNow(replacedAt);
+        document.ReplaceContent("image/png", 2048, timeProvider);
+
+        Assert.Equal("image/png", document.ContentType);
+        Assert.Equal(2048, document.SizeBytes);
+        Assert.Equal(replacedAt, document.UpdatedAt);
+    }
+
+    [Fact]
+    public void ReplaceContent_LeavesFileNameFolderIdVisibilityPublicLinkTokenAndCreatedAtUnchanged()
+    {
+        // documentation/06-update-document-content.md's "Tests -> Unit" section, second bullet, and
+        // the "What changes and what does not" table.
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var folderId = Guid.NewGuid();
+        var document = Document.Create(
+            Guid.NewGuid(), Guid.NewGuid(), folderId, "report.pdf", "application/pdf", 1024, Visibility.PublicLink, timeProvider);
+        document.ChangeVisibility(Visibility.PublicLink, "some-token", timeProvider);
+        var createdAt = document.CreatedAt;
+
+        document.ReplaceContent("image/png", 2048, timeProvider);
+
+        Assert.Equal("report.pdf", document.FileName);
+        Assert.Equal(folderId, document.FolderId);
+        Assert.Equal(Visibility.PublicLink, document.Visibility);
+        Assert.Equal("some-token", document.PublicLinkToken);
+        Assert.Equal(createdAt, document.CreatedAt);
+    }
 }
