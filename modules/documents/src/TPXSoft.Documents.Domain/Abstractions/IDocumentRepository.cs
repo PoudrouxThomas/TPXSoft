@@ -24,4 +24,9 @@ public interface IDocumentRepository
     Task<IReadOnlyList<Document>> ListByFolderAsync(Guid folderId, CancellationToken cancellationToken);
 
     void Add(Document document);
+
+    /// <summary>Persists a document's bytes -- always called alongside <see cref="Add"/> for the
+    /// same document id in the same unit of work (documentation/01-upload-document.md's
+    /// "Persistence" section: one transaction for both rows).</summary>
+    void AddContent(DocumentContent content);
 }

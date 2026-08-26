@@ -13,6 +13,8 @@ public sealed class DocumentsDbContext : DbContext
 
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<DocumentContent> DocumentContents => Set<DocumentContent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);

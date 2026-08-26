@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TPXSoft.Documents.Api.Contracts;
 using TPXSoft.Documents.IntegrationTests.Fixtures;
@@ -274,13 +275,22 @@ public sealed class FolderEndpointsTests : DocumentsIntegrationTestBase
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact(Skip = "documents.folder_id half of the emptiness check does not exist yet -- the " +
-        "Document entity is not built until feature 01 (upload). FolderService.DeleteAsync's " +
-        "own doc comment flags exactly this gap; the ON DELETE RESTRICT FK-violation catch is " +
-        "already in place as the safety net either way. Un-skip once feature 01 lands.")]
-    public Task DeleteFolder_ContainingDocument_Returns409()
+    [Fact]
+    public async Task DeleteFolder_ContainingDocument_Returns409()
     {
-        return Task.CompletedTask;
+        // FolderService.DeleteAsync has no explicit "does this folder contain a document" check
+        // of its own -- documents.folder_id's ON DELETE RESTRICT FK constraint is the safety net
+        // that makes this 409 instead of silently succeeding and orphaning the row (documentation
+        // 01-upload-document.md's "Persistence" section, documentation 07's emptiness rule).
+        using var client = CreateAuthenticatedClient(Guid.NewGuid());
+        var folder = await CreateFolderAsync(client, "Reports");
+        using var uploadResponse = await client.PostAsync(
+            "/documents", BuildUploadForm("report.pdf", "application/pdf", [1, 2, 3], folder.Id));
+        uploadResponse.EnsureSuccessStatusCode();
+
+        var response = await client.DeleteAsync($"/folders/{folder.Id}");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
@@ -298,5 +308,20 @@ public sealed class FolderEndpointsTests : DocumentsIntegrationTestBase
         var response = await client.PostAsJsonAsync("/folders", new { name, parentFolderId });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<FolderResponse>())!;
+    }
+
+    private static MultipartFormDataContent BuildUploadForm(string fileName, string contentType, byte[] bytes, Guid? folderId = null)
+    {
+        var form = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        form.Add(fileContent, "file", fileName);
+
+        if (folderId is { } id)
+        {
+            form.Add(new StringContent(id.ToString()), "folderId");
+        }
+
+        return form;
     }
 }

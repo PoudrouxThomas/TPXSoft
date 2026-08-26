@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -55,6 +56,15 @@ public static class ServiceCollectionExtensions
             });
 
         services.AddAuthorization();
+
+        // Reject oversized multipart bodies while ASP.NET reads the form, before the handler
+        // ever allocates a buffer for the file bytes (documentation/01-upload-document.md's
+        // "Streaming vs buffering" section).
+        services.AddOptions<FormOptions>()
+            .Configure<IOptions<DocumentsOptions>>((formOptions, documentsOptionsAccessor) =>
+            {
+                formOptions.MultipartBodyLengthLimit = documentsOptionsAccessor.Value.MaxUploadBytes;
+            });
 
         return services;
     }

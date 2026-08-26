@@ -46,4 +46,6 @@ public sealed class EfDocumentRepository : IDocumentRepository
             .ToListAsync(cancellationToken);
 
     public void Add(Document document) => _dbContext.Documents.Add(document);
+
+    public void AddContent(DocumentContent content) => _dbContext.DocumentContents.Add(content);
 }

@@ -27,6 +27,11 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<DocumentsOptions>()
+            .Bind(configuration.GetSection("Documents"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<IFolderRepository, EfFolderRepository>();

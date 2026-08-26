@@ -14,10 +14,12 @@ namespace TPXSoft.Documents.IntegrationTests.Fixtures;
 public sealed class DocumentsWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _connectionString;
+    private readonly long _maxUploadBytes;
 
-    public DocumentsWebApplicationFactory(string connectionString)
+    public DocumentsWebApplicationFactory(string connectionString, long maxUploadBytes = 26_214_400)
     {
         _connectionString = connectionString;
+        _maxUploadBytes = maxUploadBytes;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -30,7 +32,7 @@ public sealed class DocumentsWebApplicationFactory : WebApplicationFactory<Progr
                 ["Documents:Jwt:Issuer"] = TestTokens.Issuer,
                 ["Documents:Jwt:Audience"] = TestTokens.Audience,
                 ["Documents:Jwt:SigningKey"] = TestTokens.SigningKey,
-                ["Documents:MaxUploadBytes"] = "26214400",
+                ["Documents:MaxUploadBytes"] = _maxUploadBytes.ToString(),
                 ["Documents:ApplyMigrationsAtStartup"] = "true"
             });
         });

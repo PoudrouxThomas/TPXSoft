@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Options;
 using TPXSoft.Documents.Api.Contracts;
 using TPXSoft.Documents.Domain.Common;
 using TPXSoft.Documents.Domain.Entities;
 using TPXSoft.Documents.Domain.Services;
+using TPXSoft.Documents.Infrastructure.Options;
 
 namespace TPXSoft.Documents.Api.Endpoints;
 
@@ -10,10 +12,96 @@ public static class DocumentEndpoints
 {
     public static IEndpointRouteBuilder MapDocumentEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapPost("/documents", UploadDocumentAsync).RequireAuthorization();
         endpoints.MapGet("/documents", ListDocumentsAsync).RequireAuthorization();
         endpoints.MapGet("/documents/{id:guid}", GetDocumentAsync).RequireAuthorization();
 
         return endpoints;
+    }
+
+    /// <summary>
+    /// Reads the multipart form by hand rather than declaring IFormFile/[FromForm] parameters --
+    /// that keeps the whole ReadFormAsync call (and the exception it throws when
+    /// FormOptions.MultipartBodyLengthLimit is exceeded) inside this method's own try/catch,
+    /// instead of inside minimal API's argument-binding pipeline where it would surface as an
+    /// unhandled 500 (documentation/01-upload-document.md's "Streaming vs buffering" section and
+    /// its integration test "one byte over MaxUploadBytes -> 400, not 500").
+    /// </summary>
+    private static async Task<IResult> UploadDocumentAsync(
+        HttpRequest request,
+        ClaimsPrincipal user,
+        DocumentService documentService,
+        IOptions<DocumentsOptions> documentsOptions,
+        CancellationToken cancellationToken)
+    {
+        var (userId, orgId, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        if (!request.HasFormContentType)
+        {
+            return ValidationFailedResult();
+        }
+
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync(cancellationToken);
+        }
+        catch (InvalidDataException)
+        {
+            // Covers FormOptions.MultipartBodyLengthLimit being exceeded and other malformed
+            // multipart bodies alike.
+            return ValidationFailedResult();
+        }
+
+        var file = form.Files["file"];
+        if (file is null || file.Length == 0)
+        {
+            return ValidationFailedResult();
+        }
+
+        if (file.Length > documentsOptions.Value.MaxUploadBytes)
+        {
+            return ValidationFailedResult();
+        }
+
+        Guid? folderId = null;
+        if (form.TryGetValue("folderId", out var folderIdValues))
+        {
+            var rawFolderId = folderIdValues.ToString();
+            if (!string.IsNullOrEmpty(rawFolderId))
+            {
+                if (!Guid.TryParse(rawFolderId, out var parsedFolderId))
+                {
+                    return ValidationFailedResult();
+                }
+
+                folderId = parsedFolderId;
+            }
+        }
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+
+        var result = await documentService.UploadAsync(
+            userId!.Value,
+            orgId!.Value,
+            folderId,
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            buffer.ToArray(),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ErrorResult(result.Error);
+        }
+
+        return Results.Json(ToResponse(result.Value, userId.Value), statusCode: StatusCodes.Status201Created);
     }
 
     private static async Task<IResult> ListDocumentsAsync(
@@ -59,6 +147,8 @@ public static class DocumentEndpoints
         var (statusCode, message) = error.ToHttp();
         return Results.Json(new ErrorResponse(message), statusCode: statusCode);
     }
+
+    private static IResult ValidationFailedResult() => ErrorResult(DocumentError.ValidationFailed);
 
     /// <summary>publicLinkToken is serialized only for the document's owner --
     /// documentation/02-virtual-folders.md.</summary>

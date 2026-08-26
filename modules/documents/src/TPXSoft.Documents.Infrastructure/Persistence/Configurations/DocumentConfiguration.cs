@@ -23,7 +23,7 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .IsRequired();
 
         builder.Property(d => d.ContentType)
-            .HasMaxLength(255)
+            .HasMaxLength(128)
             .IsRequired();
 
         builder.Property(d => d.SizeBytes)
@@ -51,6 +51,13 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         // ever matched by that predicate.
         builder.HasIndex(d => d.OrgId)
             .HasFilter("\"Visibility\" = 'Organization'");
+
+        // Partial unique index -- only rows that actually have a public link token need to be
+        // unique against each other; every non-public document has a null token and nulls never
+        // collide under a partial index (documentation/README.md's "Persistence" section).
+        builder.HasIndex(d => d.PublicLinkToken)
+            .IsUnique()
+            .HasFilter("\"PublicLinkToken\" IS NOT NULL");
 
         // No navigation property to Folder (Domain entities don't reference one another), but the
         // FK still needs declaring so ON DELETE RESTRICT applies: a folder with documents in it

@@ -11,10 +11,11 @@ namespace TPXSoft.Documents.IntegrationTests.Endpoints;
 
 /// <summary>Drives the real GET /documents and GET /documents/{id} endpoints over HTTP against a
 /// real Postgres database. Test list per documentation/02-virtual-folders.md's "Tests ->
-/// Integration" section. There is no POST /documents (upload, feature 01) endpoint yet, so
-/// documents are seeded directly through a fresh DocumentsDbContext via
-/// <see cref="SeedDocumentAsync"/> rather than through HTTP, mirroring how the real repository
-/// would persist them.</summary>
+/// Integration" section. POST /documents (upload) is exercised separately in
+/// <see cref="UploadDocumentEndpointTests"/> -- documents here are still seeded directly through a
+/// fresh DocumentsDbContext via <see cref="SeedDocumentAsync"/> so these tests can construct
+/// states upload alone cannot produce yet (e.g. Organization visibility, a set
+/// PublicLinkToken).</summary>
 [Collection(PostgresCollection.Name)]
 [Trait("Category", "Integration")]
 public sealed class DocumentEndpointsTests : DocumentsIntegrationTestBase
