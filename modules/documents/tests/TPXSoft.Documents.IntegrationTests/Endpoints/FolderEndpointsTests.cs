@@ -278,8 +278,9 @@ public sealed class FolderEndpointsTests : DocumentsIntegrationTestBase
         "Document entity is not built until feature 01 (upload). FolderService.DeleteAsync's " +
         "own doc comment flags exactly this gap; the ON DELETE RESTRICT FK-violation catch is " +
         "already in place as the safety net either way. Un-skip once feature 01 lands.")]
-    public async Task DeleteFolder_ContainingDocument_Returns409()
+    public Task DeleteFolder_ContainingDocument_Returns409()
     {
+        return Task.CompletedTask;
     }
 
     [Fact]
