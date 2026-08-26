@@ -14,14 +14,14 @@ namespace TPXSoft.Documents.IntegrationTests.Endpoints;
 /// database. Test list per documentation/06-update-document-content.md's "Tests -> Integration"
 /// section.
 ///
-/// GET /documents/{id}/content (documentation/05-preview-and-download.md) does not exist yet --
-/// same gap already noted in UploadDocumentEndpointTests. Every bullet below that the spec phrases
-/// as "... then GET .../content returns X" is instead verified by reading the document_contents
-/// row directly through a fresh DocumentsDbContext, mirroring that existing precedent. The two
-/// bullets phrased as "the grantee/public-link caller downloads the new bytes" cannot be driven
-/// end-to-end over HTTP until feature 05 lands a download route; they are verified here as the
-/// closest available proxy -- the underlying bytes changed and the grantee's share grant /
-/// the document's public link token were left untouched by the replace -- and flagged inline.
+/// Written before feature 05 (GET /documents/{id}/content) landed, so every bullet the spec
+/// phrases as "... then GET .../content returns X" is verified here by reading the
+/// document_contents row directly through a fresh DocumentsDbContext instead -- including the two
+/// bullets about the grantee/public-link caller downloading the new bytes, which only confirm the
+/// share grant / public link token survived the replace untouched. The actual end-to-end download
+/// assertions now live in DownloadDocumentContentEndpointTests and
+/// PublicDocumentContentEndpointTests; left as-is here rather than rewritten, since these tests
+/// still pass and still document the replace endpoint's own behavior correctly.
 /// </summary>
 [Collection(PostgresCollection.Name)]
 [Trait("Category", "Integration")]

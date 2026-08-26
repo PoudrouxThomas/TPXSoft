@@ -29,6 +29,9 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
     public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_documents.SingleOrDefault(d => d.Id == id));
 
+    public Task<Document?> GetByPublicLinkTokenAsync(string token, CancellationToken cancellationToken) =>
+        Task.FromResult(_documents.SingleOrDefault(d => d.PublicLinkToken == token));
+
     public Task<IReadOnlyList<Document>> ListAsync(
         Guid callerUserId, Guid callerOrgId, Guid? folderId, bool mine, CancellationToken cancellationToken)
     {
@@ -76,6 +79,9 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
 
     public Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken) =>
         Task.FromResult(_contents.SingleOrDefault(c => c.DocumentId == documentId));
+
+    public Task<byte[]?> GetContentBytesAsync(Guid documentId, CancellationToken cancellationToken) =>
+        Task.FromResult(_contents.SingleOrDefault(c => c.DocumentId == documentId)?.Bytes);
 
     public void Remove(Document document)
     {

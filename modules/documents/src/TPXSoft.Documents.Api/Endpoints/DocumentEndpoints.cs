@@ -17,6 +17,7 @@ public static class DocumentEndpoints
         endpoints.MapGet("/documents/{id:guid}", GetDocumentAsync).RequireAuthorization();
         endpoints.MapPatch("/documents/{id:guid}", UpdateDocumentAsync).RequireAuthorization();
         endpoints.MapDelete("/documents/{id:guid}", DeleteDocumentAsync).RequireAuthorization();
+        endpoints.MapGet("/documents/{id:guid}/content", DownloadDocumentContentAsync).RequireAuthorization();
         endpoints.MapPut("/documents/{id:guid}/content", ReplaceDocumentContentAsync).RequireAuthorization();
         endpoints.MapPut("/documents/{id:guid}/visibility", SetDocumentVisibilityAsync).RequireAuthorization();
         endpoints.MapGet("/documents/{id:guid}/shares", ListDocumentSharesAsync).RequireAuthorization();
@@ -169,6 +170,19 @@ public static class DocumentEndpoints
 
         var result = await documentService.DeleteAsync(userId!.Value, id, cancellationToken);
         return result.IsFailure ? ErrorResult(result.Error) : Results.NoContent();
+    }
+
+    private static async Task<IResult> DownloadDocumentContentAsync(
+        Guid id, HttpResponse response, ClaimsPrincipal user, DocumentService documentService, CancellationToken cancellationToken)
+    {
+        var (userId, orgId, unauthorized) = GetCaller(user);
+        if (unauthorized is not null)
+        {
+            return unauthorized;
+        }
+
+        var result = await documentService.DownloadContentAsync(userId!.Value, orgId!.Value, id, cancellationToken);
+        return result.IsFailure ? ErrorResult(result.Error) : DocumentContentResults.Build(response, result.Value);
     }
 
     /// <summary>

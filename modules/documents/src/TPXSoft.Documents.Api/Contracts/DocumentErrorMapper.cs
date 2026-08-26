@@ -20,6 +20,8 @@ internal static class DocumentErrorMapper
         DocumentError.NotFound => (StatusCodes.Status404NotFound, "No document with this id."),
         DocumentError.NotOwner => (StatusCodes.Status403Forbidden, "Caller is not the owner."),
         DocumentError.ShareAlreadyExists => (StatusCodes.Status409Conflict, "This user already has a share grant for this document."),
+        DocumentError.ContentForbidden => (StatusCodes.Status403Forbidden, "Caller cannot see this document."),
+        DocumentError.PublicLinkNotFound => (StatusCodes.Status404NotFound, "No document with this token."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, "Unmapped DocumentError.")
     };
 }

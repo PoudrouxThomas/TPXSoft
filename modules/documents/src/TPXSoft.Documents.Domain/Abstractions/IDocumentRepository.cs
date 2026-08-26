@@ -6,6 +6,14 @@ public interface IDocumentRepository
 {
     Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Looks a document up by its public-link token only, never by id -- the public
+    /// download route has no id in it and must never learn one
+    /// (documentation/05-preview-and-download.md's "Public route" rule 1). Matches regardless of
+    /// the document's current Visibility; the caller (DocumentService) asserts
+    /// Visibility == PublicLink explicitly rather than relying on this query alone, so a bug that
+    /// leaves a stale token around does not become a leak (rule 2).</summary>
+    Task<Document?> GetByPublicLinkTokenAsync(string token, CancellationToken cancellationToken);
+
     /// <summary>
     /// The base set is `owner_user_id = callerUserId OR (org_id = callerOrgId AND visibility =
     /// Organization)` -- one query with an OR, never two round trips (documentation/
@@ -36,6 +44,15 @@ public interface IDocumentRepository
     /// "Implementation" section). Null only if the document row exists without a matching content
     /// row, which should not happen given they are always created together.</summary>
     Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken);
+
+    /// <summary>No-tracking projection straight to the raw bytes -- used only by the two content
+    /// download routes (documentation/05-preview-and-download.md's "Serving the bytes" section).
+    /// The DocumentContent entity itself is never tracked or loaded on this path, unlike
+    /// <see cref="GetContentAsync"/>, which is used by the replace-content write path and needs a
+    /// tracked instance to mutate in place. Null only if the document row exists without a
+    /// matching content row, which should not happen given they are always created together.
+    /// </summary>
+    Task<byte[]?> GetContentBytesAsync(Guid documentId, CancellationToken cancellationToken);
 
     /// <summary>Hard-deletes the document row. Its document_contents row (and, once feature 04
     /// lands, its document_shares rows) cascade via the database's own ON DELETE CASCADE --

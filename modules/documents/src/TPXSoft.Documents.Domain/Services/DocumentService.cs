@@ -119,6 +119,69 @@ public sealed class DocumentService
     }
 
     /// <summary>
+    /// 404 if the document does not exist at all, 403 if it exists but DocumentAccess.Evaluate
+    /// returns None for the caller, 200 + bytes otherwise -- the same access rule as
+    /// <see cref="GetAsync"/> (Read or Owner), but downloadDocumentContent has its own 403 message
+    /// per documentation/05-preview-and-download.md's Errors table, hence
+    /// <see cref="DocumentError.ContentForbidden"/> rather than <see cref="DocumentError.Forbidden"/>.
+    /// A PublicLink document is not readable here by a non-owner/non-grantee/non-org caller --
+    /// public access goes through <see cref="DownloadByPublicLinkAsync"/> and nowhere else.
+    /// </summary>
+    public async Task<Result<DocumentDownload>> DownloadContentAsync(
+        Guid callerUserId, Guid callerOrgId, Guid id, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByIdAsync(id, cancellationToken);
+        if (document is null)
+        {
+            return Result<DocumentDownload>.Failure(DocumentError.NotFound);
+        }
+
+        var share = await _documentShareRepository.GetAsync(document.Id, callerUserId, cancellationToken);
+        var access = DocumentAccessEvaluator.Evaluate(document, callerUserId, callerOrgId, hasShareGrant: share is not null);
+        if (access == DocumentAccess.None)
+        {
+            return Result<DocumentDownload>.Failure(DocumentError.ContentForbidden);
+        }
+
+        var content = await _documentRepository.GetContentBytesAsync(document.Id, cancellationToken);
+        if (content is null)
+        {
+            // Should not happen -- document and content rows share the same lifetime
+            // (documentation/README.md's "Why content is a separate table"); guarded rather than
+            // surfacing a null-ref as an unhandled 500, same as ReplaceContentAsync below.
+            return Result<DocumentDownload>.Failure(DocumentError.NotFound);
+        }
+
+        return Result<DocumentDownload>.Success(new DocumentDownload(document, content));
+    }
+
+    /// <summary>
+    /// The one anonymous read path in this module (documentation/05-preview-and-download.md's
+    /// "Public route" section). Looks the document up by token only, never by id (rule 1), and
+    /// asserts Visibility == PublicLink explicitly rather than relying on token nullability alone
+    /// (rule 2). Every failure mode -- unknown token, revoked link, deleted document, or a token
+    /// whose document has since moved off PublicLink -- collapses into the same
+    /// <see cref="DocumentError.PublicLinkNotFound"/> so probing tokens gets no distinguishing
+    /// signal (rule 3).
+    /// </summary>
+    public async Task<Result<DocumentDownload>> DownloadByPublicLinkAsync(string token, CancellationToken cancellationToken)
+    {
+        var document = await _documentRepository.GetByPublicLinkTokenAsync(token, cancellationToken);
+        if (document is null || document.Visibility != Visibility.PublicLink)
+        {
+            return Result<DocumentDownload>.Failure(DocumentError.PublicLinkNotFound);
+        }
+
+        var content = await _documentRepository.GetContentBytesAsync(document.Id, cancellationToken);
+        if (content is null)
+        {
+            return Result<DocumentDownload>.Failure(DocumentError.PublicLinkNotFound);
+        }
+
+        return Result<DocumentDownload>.Success(new DocumentDownload(document, content));
+    }
+
+    /// <summary>
     /// Tri-state update: <paramref name="fileNameIsSet"/>/<paramref name="folderIdIsSet"/> tell
     /// apart "absent from the PATCH body" (leave alone) from "present" (apply, even when the
     /// present value is null -- move to root). Owner-only, and load-and-authorize happens before

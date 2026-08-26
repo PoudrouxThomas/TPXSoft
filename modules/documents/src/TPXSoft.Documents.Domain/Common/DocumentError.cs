@@ -37,5 +37,19 @@ public enum DocumentError
     /// <summary>A DocumentShare already exists for (documentId, grantedToUserId) -- a second grant
     /// for the same user is a conflict, not an idempotent success
     /// (documentation/04-sharing-and-visibility.md's shareDocumentWithUser section).</summary>
-    ShareAlreadyExists
+    ShareAlreadyExists,
+
+    /// <summary>Document exists but DocumentAccess.Evaluate returned None for the caller, on the
+    /// downloadDocumentContent route specifically -- its own message per
+    /// documentation/05-preview-and-download.md's Errors table ("Caller cannot see this
+    /// document."), distinct wording from <see cref="Forbidden"/> even though the access check
+    /// itself (DocumentAccess.Evaluate, Read or Owner required) is identical.</summary>
+    ContentForbidden,
+
+    /// <summary>Public-link download failure -- unknown token, revoked link, deleted document, or
+    /// a token whose document is no longer Visibility.PublicLink all collapse into this single
+    /// case and its single message, so probing tokens gets no distinguishing status code or body
+    /// (documentation/05-preview-and-download.md's "Public route" rule 3: "404 for every failure").
+    /// </summary>
+    PublicLinkNotFound
 }

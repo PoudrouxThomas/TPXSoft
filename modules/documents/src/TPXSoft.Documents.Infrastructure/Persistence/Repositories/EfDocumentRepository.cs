@@ -16,6 +16,9 @@ public sealed class EfDocumentRepository : IDocumentRepository
     public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _dbContext.Documents.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
 
+    public Task<Document?> GetByPublicLinkTokenAsync(string token, CancellationToken cancellationToken) =>
+        _dbContext.Documents.SingleOrDefaultAsync(d => d.PublicLinkToken == token, cancellationToken);
+
     public async Task<IReadOnlyList<Document>> ListAsync(
         Guid callerUserId, Guid callerOrgId, Guid? folderId, bool mine, CancellationToken cancellationToken)
     {
@@ -51,6 +54,13 @@ public sealed class EfDocumentRepository : IDocumentRepository
 
     public Task<DocumentContent?> GetContentAsync(Guid documentId, CancellationToken cancellationToken) =>
         _dbContext.DocumentContents.SingleOrDefaultAsync(c => c.DocumentId == documentId, cancellationToken);
+
+    public Task<byte[]?> GetContentBytesAsync(Guid documentId, CancellationToken cancellationToken) =>
+        _dbContext.DocumentContents
+            .AsNoTracking()
+            .Where(c => c.DocumentId == documentId)
+            .Select(c => c.Bytes)
+            .SingleOrDefaultAsync(cancellationToken);
 
     public void Remove(Document document) => _dbContext.Documents.Remove(document);
 }
