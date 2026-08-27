@@ -14,6 +14,6 @@ public sealed record RefreshRequest(string RefreshToken);
 
 public sealed record TokenPair(string AccessToken, string RefreshToken);
 
-public sealed record UserResponse(Guid Id, string Email, Guid OrgId, Role Role);
+public sealed record UserResponse(Guid Id, string Email, Guid OrgId, string OrgName, Role Role);
 
 public sealed record ErrorResponse(string Message);

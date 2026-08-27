@@ -18,6 +18,7 @@ test('registering with valid details redirects to home and shows the user email'
                 id: 'user-1',
                 email: 'jane@example.com',
                 orgId: 'org-1',
+                orgName: 'Acme',
                 role: 'Admin',
             }),
         });

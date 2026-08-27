@@ -41,6 +41,7 @@ public sealed class AuthEndpointsFlowTests : AuthIntegrationTestBase
         Assert.Equal(Role.Admin, user.Role);
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.NotEqual(Guid.Empty, user.OrgId);
+        Assert.Equal("Acme Inc", user.OrgName);
     }
 
     [Fact]

@@ -18,6 +18,7 @@ test('logging in with valid credentials redirects to home and shows the user ema
                 id: 'user-1',
                 email: 'jane@example.com',
                 orgId: 'org-1',
+                orgName: 'Acme',
                 role: 'Admin',
             }),
         });

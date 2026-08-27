@@ -833,6 +833,10 @@ namespace TPXSoft.Auth.Client
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid OrgId { get; set; }
 
+        [Newtonsoft.Json.JsonProperty("orgName", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OrgName { get; set; }
+
         [Newtonsoft.Json.JsonProperty("role", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]

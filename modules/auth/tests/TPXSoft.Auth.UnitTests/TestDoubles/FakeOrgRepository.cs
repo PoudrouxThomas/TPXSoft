@@ -10,4 +10,7 @@ internal sealed class FakeOrgRepository : IOrgRepository
     public List<Org> Added { get; } = new();
 
     public void Add(Org org) => Added.Add(org);
+
+    public Task<Org?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Added.FirstOrDefault(o => o.Id == id));
 }
