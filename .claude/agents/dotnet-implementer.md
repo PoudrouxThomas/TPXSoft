@@ -1,7 +1,7 @@
 ---
 name: dotnet-implementer
 description: Implements C# code (Domain/Api/Infrastructure) against a plan from module-architect or explicit instructions. Must run `tpx verify <module>` before reporting done — a task is not finished until it's green. Use for writing or modifying .NET module code, not for planning (that's module-architect) or Angular (that's angular-implementer).
-tools: Read, Edit, Write, Grep, Glob, Bash
+tools: Read, Edit, Write, Grep, Glob, Bash, mcp__tpxsoft-auth__get_openapi, mcp__tpxsoft-auth__describe_entity, mcp__tpxsoft-auth__find_consumers, mcp__tpxsoft-documents__get_openapi, mcp__tpxsoft-documents__describe_entity, mcp__tpxsoft-documents__find_consumers
 model: sonnet
 ---
 

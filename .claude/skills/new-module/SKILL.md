@@ -14,8 +14,12 @@ Scaffold module `<name>` per the target layout in root `CLAUDE.md` and PLAN.md.
 4. Create `contracts/<name>.v1.yaml` — minimal valid OpenAPI stub (info + empty paths). Real endpoints come later via `new-endpoint`.
 5. Add `.github/workflows/<name>.yml`, path-filtered to `modules/<name>/**`.
 6. Register the module's MCP server in root `.mcp.json` (stdio, pointing at the built `Mcp` project).
-7. Add `modules/<name>/` to `CODEOWNERS`.
-8. Write `modules/<name>/CLAUDE.md`: bounded context, entities, its `tpx verify <name>` line, known consumers (PLAN §0.10). Loaded only when working in that module.
-9. Run `tpx verify <name>` — must resolve cleanly (empty module is fine; build/sln wiring must not error).
+7. Add `<name>`'s MCP tools to the consuming agents' `tools:` frontmatter, so they can query the new module instead of reading its source:
+   - `module-architect`, `dotnet-implementer`: `mcp__tpxsoft-<name>__get_openapi, mcp__tpxsoft-<name>__describe_entity, mcp__tpxsoft-<name>__find_consumers`
+   - `contract-guardian`: `mcp__tpxsoft-<name>__find_consumers`
+   - `angular-implementer`: `mcp__tpxsoft-<name>__get_openapi, mcp__tpxsoft-<name>__list_endpoints, mcp__tpxsoft-<name>__describe_entity`
+8. Add `modules/<name>/` to `CODEOWNERS`.
+9. Write `modules/<name>/CLAUDE.md`: bounded context, entities, its `tpx verify <name>` line, known consumers (PLAN §0.10). Loaded only when working in that module.
+10. Run `tpx verify <name>` — must resolve cleanly (empty module is fine; build/sln wiring must not error).
 
 Never hand-write anything under `shared/clients/**` — that stays generated, even for a brand-new module's client.
