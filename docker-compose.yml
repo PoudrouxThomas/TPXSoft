@@ -16,5 +16,36 @@ services:
       timeout: 5s
       retries: 10
 
+  auth-api:
+    build:
+      context: .
+      dockerfile: modules/auth/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-tpxsoft}-auth-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__AuthDb: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tpxsoft};Username=${POSTGRES_USER:-tpxsoft};Password=${POSTGRES_PASSWORD:-tpxsoft}
+      Auth__Jwt__SigningKey: ${AUTH_JWT_SIGNING_KEY:-dev-only-jwt-signing-key-do-not-use-in-production-01234567}
+      Auth__Cors__AllowedOrigins__0: http://localhost:4200
+      Auth__ApplyMigrationsAtStartup: "true"
+    ports:
+      - "${AUTH_PORT:-5081}:8080"
+
+  documents-api:
+    build:
+      context: .
+      dockerfile: modules/documents/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-tpxsoft}-documents-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DocumentsDb: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tpxsoft};Username=${POSTGRES_USER:-tpxsoft};Password=${POSTGRES_PASSWORD:-tpxsoft}
+      Documents__Jwt__SigningKey: ${AUTH_JWT_SIGNING_KEY:-dev-only-jwt-signing-key-do-not-use-in-production-01234567}
+      Documents__ApplyMigrationsAtStartup: "true"
+    ports:
+      - "${DOCUMENTS_PORT:-5082}:8080"
+
 volumes:
   postgres-data:

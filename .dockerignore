@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/node_modules/
+.git/
+.angular/
+.vs/
+test-results/
+**/TestResults/
+plugin/
+apps/
+*.md
