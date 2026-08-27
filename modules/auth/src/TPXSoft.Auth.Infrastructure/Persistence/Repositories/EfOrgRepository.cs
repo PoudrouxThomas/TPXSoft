@@ -13,4 +13,7 @@ public sealed class EfOrgRepository : IOrgRepository
     }
 
     public void Add(Org org) => _dbContext.Orgs.Add(org);
+
+    public Task<Org?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _dbContext.Orgs.FindAsync([id], cancellationToken).AsTask();
 }

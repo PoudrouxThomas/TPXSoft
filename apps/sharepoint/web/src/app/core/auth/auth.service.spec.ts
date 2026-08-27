@@ -12,6 +12,7 @@ const testUser: User = {
     id: 'user-1',
     email: 'jane@example.com',
     orgId: 'org-1',
+    orgName: 'Acme',
     role: 'Admin',
 };
 

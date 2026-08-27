@@ -190,7 +190,7 @@ components:
 
     User:
       type: object
-      required: [id, email, orgId, role]
+      required: [id, email, orgId, orgName, role]
       properties:
         id:
           type: string
@@ -201,6 +201,8 @@ components:
         orgId:
           type: string
           format: uuid
+        orgName:
+          type: string
         role:
           $ref: "#/components/schemas/Role"
 

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using TPXSoft.Auth.Api.Contracts;
+using TPXSoft.Auth.Domain.Abstractions;
 using TPXSoft.Auth.Domain.Common;
 using TPXSoft.Auth.Domain.Services;
 
@@ -68,7 +69,7 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> GetCurrentUserAsync(
-        ClaimsPrincipal user, AuthService authService, CancellationToken cancellationToken)
+        ClaimsPrincipal user, AuthService authService, IOrgRepository orgRepository, CancellationToken cancellationToken)
     {
         var userId = user.GetUserId();
         if (userId is null)
@@ -83,7 +84,8 @@ public static class AuthEndpoints
         }
 
         var domainUser = result.Value;
-        return Results.Ok(new UserResponse(domainUser.Id, domainUser.Email, domainUser.OrgId, domainUser.Role));
+        var org = await orgRepository.GetByIdAsync(domainUser.OrgId, cancellationToken);
+        return Results.Ok(new UserResponse(domainUser.Id, domainUser.Email, domainUser.OrgId, org?.Name ?? string.Empty, domainUser.Role));
     }
 
     private static IResult ErrorResult(AuthError error)

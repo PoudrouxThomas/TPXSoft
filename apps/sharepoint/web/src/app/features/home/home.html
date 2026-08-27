@@ -2,7 +2,7 @@
     <h1>Welcome</h1>
     @if (authService.currentUser(); as user) {
         <p class="user-email">{{ user.email }}</p>
-        <p class="user-meta">{{ user.role }} · Org {{ user.orgId }}</p>
+        <p class="user-meta">{{ user.role }} · {{ user.orgName }}</p>
     }
     <button mat-flat-button type="button" (click)="onLogout()">Log out</button>
 </div>
