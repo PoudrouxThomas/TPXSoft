@@ -117,6 +117,9 @@ public static class ContractTools
         {
             foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
             {
+                if (!IsSearchableSourceFile(file))
+                    continue;
+
                 string content;
                 try
                 {
@@ -135,6 +138,19 @@ public static class ContractTools
         return matches.Count == 0
             ? $"No references to '{entityOrField}' found under shared/clients/ or other modules' src/."
             : string.Join('\n', matches);
+    }
+
+    private static readonly string[] SourceExtensions = { ".cs", ".ts" };
+
+    private static bool IsSearchableSourceFile(string path)
+    {
+        if (!SourceExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        var segments = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return !segments.Any(s => string.Equals(s, "bin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(s, "obj", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(s, "node_modules", StringComparison.OrdinalIgnoreCase));
     }
 
     private static YamlMappingNode? LoadContract()
