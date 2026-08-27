@@ -31,13 +31,18 @@ internal static class Shell
 
     private static Process Start(string fileName, string arguments, string? workingDirectory, bool redirect)
     {
-        var psi = new ProcessStartInfo(fileName, arguments)
-        {
-            WorkingDirectory = workingDirectory ?? Modules.RepoRoot,
-            UseShellExecute = false,
-            RedirectStandardOutput = redirect,
-            RedirectStandardError = redirect,
-        };
+        // On Windows, PATH-resolved npm CLIs (nswag is a native .exe, but ng-openapi-gen and
+        // similar are .cmd shims) can't be launched directly via Process.Start with
+        // UseShellExecute=false -- only cmd.exe knows how to resolve a bare command name to
+        // its .cmd/.bat/.exe candidates. Route through cmd.exe /c on Windows so both kinds work.
+        var psi = OperatingSystem.IsWindows()
+            ? new ProcessStartInfo("cmd.exe", $"/c {fileName} {arguments}")
+            : new ProcessStartInfo(fileName, arguments);
+
+        psi.WorkingDirectory = workingDirectory ?? Modules.RepoRoot;
+        psi.UseShellExecute = false;
+        psi.RedirectStandardOutput = redirect;
+        psi.RedirectStandardError = redirect;
 
         return Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start '{fileName} {arguments}'.");
     }

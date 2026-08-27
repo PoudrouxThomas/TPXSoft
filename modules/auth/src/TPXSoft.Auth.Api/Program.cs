@@ -15,6 +15,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddAuthInfrastructure(builder.Configuration);
 builder.Services.AddAuthApi();
+builder.Services.AddAuthApiCors(builder.Configuration);
 
 var app = builder.Build();
 
@@ -24,6 +25,7 @@ if (app.Configuration.GetValue<bool>("Auth:ApplyMigrationsAtStartup"))
     migrationScope.ServiceProvider.GetRequiredService<AuthDbContext>().Database.Migrate();
 }
 
+app.UseCors(ServiceCollectionExtensions.AuthCorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 

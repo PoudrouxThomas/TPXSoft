@@ -1,15 +1,21 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TPXSoft.Auth.Api.Contracts;
+using TPXSoft.Auth.Api.Options;
 using TPXSoft.Auth.Infrastructure.Options;
 
 namespace TPXSoft.Auth.Api;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>Name of the CORS policy registered by <see cref="AddAuthApiCors"/>, for
+    /// <c>app.UseCors(...)</c> to reference.</summary>
+    public const string AuthCorsPolicyName = "AuthApiCors";
+
     /// <summary>Wires ASP.NET Core JWT bearer authentication against JwtOptions (bound and
     /// validated by AddAuthInfrastructure). HTTP-specific, so it lives in Api rather than
     /// Infrastructure.</summary>
@@ -54,6 +60,26 @@ public static class ServiceCollectionExtensions
             });
 
         services.AddAuthorization();
+
+        return services;
+    }
+
+    /// <summary>Registers a named CORS policy allowing the configured origin(s) (Auth:Cors:AllowedOrigins)
+    /// any header/method -- no wildcard origin. Empty by default (see appsettings.json);
+    /// appsettings.Development.json sets it to the Angular dev server.</summary>
+    public static IServiceCollection AddAuthApiCors(this IServiceCollection services, IConfiguration configuration)
+    {
+        var corsOptions = configuration.GetSection("Auth:Cors").Get<AuthCorsOptions>() ?? new AuthCorsOptions();
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy(AuthCorsPolicyName, policy =>
+            {
+                policy.WithOrigins(corsOptions.AllowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
 
         return services;
     }
