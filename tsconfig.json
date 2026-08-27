@@ -8,11 +8,17 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "skipLibCheck": true,
+        "ignoreDeprecations": "6.0",
         "isolatedModules": true,
         "experimentalDecorators": true,
         "importHelpers": true,
         "target": "ES2022",
-        "module": "preserve"
+        "module": "preserve",
+        "baseUrl": ".",
+        "paths": {
+            "@tpxsoft/auth-client": ["shared/clients/angular/src/index.ts"],
+            "@tpxsoft/auth-client/*": ["shared/clients/angular/src/*"]
+        }
     },
     "angularCompilerOptions": {
         "enableI18nLegacyMessageIdFormat": false,

@@ -34,7 +34,7 @@ HMAC-SHA256, `Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler` (not th
 
 ## Config keys
 
-`ConnectionStrings:AuthDb`, `Auth:Jwt:Issuer` (`tpxsoft-auth`), `Auth:Jwt:Audience` (`tpxsoft`), `Auth:Jwt:SigningKey` (**never committed** — env var `Auth__Jwt__SigningKey` or user-secrets only, ≥32 bytes), `Auth:Jwt:AccessTokenLifetimeMinutes` (15), `Auth:RefreshTokenLifetimeDays` (7), `Auth:ApplyMigrationsAtStartup` (`false`, `true` in `appsettings.Development.json`).
+`ConnectionStrings:AuthDb`, `Auth:Jwt:Issuer` (`tpxsoft-auth`), `Auth:Jwt:Audience` (`tpxsoft`), `Auth:Jwt:SigningKey` (**never committed** — env var `Auth__Jwt__SigningKey` or user-secrets only, ≥32 bytes), `Auth:Jwt:AccessTokenLifetimeMinutes` (15), `Auth:RefreshTokenLifetimeDays` (7), `Auth:ApplyMigrationsAtStartup` (`false`, `true` in `appsettings.Development.json`), `Auth:Cors:AllowedOrigins` (string array, empty by default, `["http://localhost:4200"]` in `appsettings.Development.json` for the Angular dev server).
 
 ## Known assumptions and deferred decisions
 

@@ -1,0 +1,23 @@
+.auth-page {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 360px;
+}
+
+.error-message {
+    color: var(--mat-sys-error, red);
+    margin: 0;
+}
+
+.cross-link {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+}
