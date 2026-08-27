@@ -12,18 +12,16 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
 - [x] `git init`, root `.gitignore`, `.editorconfig`
 - [x] `Directory.Build.props` with `TreatWarningsAsErrors=true` and `Nullable=enable`
 - [x] `docker-compose.yml`: Postgres 16, `COMPOSE_PROJECT_NAME`/port read from env
-- [x] `tools/tpx` CLI implements all seven commands (`verify <module>`, `verify --affected`,
+- [x] `tools/tpx` CLI implements ten commands (`verify <module>`, `verify --affected`,
       `verify boundaries`, `test <module> --integration`, `contract lint`, `gen`,
-      `worktree new <module>/<feature>`) — builds clean and runs; `contract lint`,
-      `verify boundaries` and `verify --affected` each executed and exited 0 with the
-      documented "nothing found" output
-- [x] `gh` and `pnpm` installed (per PLAN.md 0.1 checklist) — **caveat added this
-      session**: `pnpm` confirmed present here, but this particular sandbox has
-      neither `gh` nor `oasdiff` on `PATH` (both `which` exit 1). GitHub MCP tools
-      stand in for `gh` where needed; `oasdiff`'s absence is the direct cause of
-      Phase 0 verification item 7 not holding today (see below). Not re-checking
-      this box to unchecked since it may be sandbox-specific rather than universal
-      — but don't assume either tool is actually there without checking first.
+      `worktree new <module>/<feature>`, `worktree list`, `worktree rm <module>/<feature>`,
+      `hook <name>`) — builds clean and runs; `contract lint`, `verify boundaries` and
+      `verify --affected` each executed and exited 0 with the documented "nothing found"
+      output
+- [x] `gh`, `pnpm`, and `oasdiff` all confirmed on `PATH` in this environment
+      (`gh`, `pnpm`, `oasdiff`, `dotnet --version` → 9.0.306) — checked directly this
+      session, not inferred. `contract lint` now runs its real breaking-change diff
+      instead of skipping it (see Phase 0 completion item 7).
 
 ### 0.3 Subagents (`.claude/agents/`)
 
@@ -73,12 +71,14 @@ routines and subagents").
       the worktree's `.env` (`tools/tpx/Worktrees.cs`) — confirmed live: created
       `auth/verification-demo`, got a distinct port (5433) and `COMPOSE_PROJECT_NAME`,
       ran `tpx verify auth` green inside it, cleaned up
-- [ ] Verified end-to-end with two worktrees running integration tests
-      *simultaneously* — blocked: this sandbox's Docker daemon can't start
-      (permission-restricted container, `ulimit: Operation not permitted`), and
-      Testcontainers needs a live daemon. The worktree/port-allocation mechanism
-      itself is confirmed working (above); only the concurrent-Postgres part is
-      unverified here.
+- [x] Verified end-to-end with two worktrees running integration tests
+      *simultaneously* — Docker Desktop started this session and confirmed working
+      (earlier "daemon can't start" note was sandbox-specific, not universal). Created
+      `auth/concurrent-demo-a` (port 5433) and `auth/concurrent-demo-b` (port 5434),
+      brought up both Postgres stacks at once (distinct containers/networks/volumes,
+      both healthy simultaneously), ran `tpx test auth --integration` in both worktrees
+      concurrently: 13/13 pass in each, no collision. Both worktrees and containers
+      torn down afterward.
 
 ### 0.7 MCP servers
 
@@ -89,13 +89,14 @@ routines and subagents").
       `describe_entity` return data matching `contracts/auth.v1.yaml`, `find_consumers`
       correctly reports zero consumers (Auth is the first module), `run_tests`/
       `get_migrations_status` both shell out successfully
-- [x] `.mcp.json` registering module MCP servers — registers `tpxsoft-auth`
-      (stdio, `dotnet run --project modules/auth/src/TPXSoft.Auth.Mcp/...`)
+- [x] `.mcp.json` registering module MCP servers — registers both `tpxsoft-auth` and
+      `tpxsoft-documents` (stdio, `dotnet exec .../bin/Debug/net9.0/TPXSoft.<Module>.Mcp.dll`)
 
 ### 0.8 Loops, schedules, and goal tracking
 
 - [x] Weekly `/schedule` cloud routine exists and runs PR review + contract lint +
-      `GOALS.md` update (this routine)
+      `GOALS.md` update (this routine) — user ran it manually and confirmed it works
+      (see Phase 0 completion item 9)
 - [x] `tpx-goal` skill built (`.claude/skills/tpx-goal/SKILL.md`) — re-verifies each
       checkbox against real repo state (file/dir existence, actually re-running
       `tpx verify`/`tpx contract lint`/etc., agent/skill/hook presence) rather than
@@ -115,23 +116,19 @@ routines and subagents").
 
 ### Phase 0 completion (PLAN.md "Verification", all 9 must pass from a clean clone)
 
-Re-run against the real Auth module for the first time this session. Six of nine
-pass outright; the other three have a specific, named blocker rather than being
-generically "not done" — see each line.
+Re-run against the real Auth module. Seven of nine pass outright; the other two have
+a specific, named blocker rather than being generically "not done" — see each line.
 
-- [ ] 1. `docker compose up -d && tpx verify auth` green in under 60s —
-      **`tpx verify auth` alone confirmed green repeatedly (10.3–13.8s, well under
-      budget)**; `docker compose up -d` itself can't run in this sandbox (Docker
-      daemon can't start, see 0.6)
-- [ ] 2. `tpx test auth --integration` passes against real Postgres via Testcontainers
-      — 13 tests written and structurally complete
-      (`modules/auth/tests/TPXSoft.Auth.IntegrationTests`), but blocked by the same
-      Docker-daemon gap: they fail with `DockerUnavailableException`, not a test or
-      code defect
+- [x] 1. `docker compose up -d && tpx verify auth` green in under 60s —
+      Docker Desktop started this session (earlier "daemon can't start" was
+      sandbox-specific, not universal), `docker compose up -d` brought Postgres
+      healthy, then `tpx verify auth` green in 6.1s
+- [x] 2. `tpx test auth --integration` passes against real Postgres via Testcontainers
+      — confirmed this session: 13/13 pass in 7s
+      (`modules/auth/tests/TPXSoft.Auth.IntegrationTests`)
 - [x] 3. `tpx worktree new auth/demo` works and `tpx verify auth` runs green inside
       the new worktree with its own allocated port — confirmed live. *Simultaneous*
-      integration-test runs in two trees specifically is still blocked by the
-      Docker gap (tracked under 0.6, not re-listed as a separate failure here)
+      integration-test runs in two trees confirmed too this session (see 0.6)
 - [x] 4. Editing a file under `shared/clients/` is blocked by the hook — confirmed
       live: a real `Write` to `shared/clients/csharp/HookTestProbe.cs` was rejected
       by `block-generated.sh` with the expected message
@@ -145,26 +142,25 @@ generically "not done" — see each line.
       `contracts/auth.v1.yaml`). Not separately re-confirmed by spawning a literal
       fresh Claude Code session and observing its tool choice.
 - [ ] 7. `tpx contract lint` fails on a removed required field, `contract-guardian`
-      names downstream consumers — **tested and found not to hold today**: on a
-      throwaway branch, removing `refreshToken` from `TokenPair`'s `required` list
-      still passed `tpx contract lint` (exit 0), because `oasdiff` isn't installed
-      in this sandbox and `Contracts.Lint` gracefully skips the breaking-change
-      diff when it's missing (by design, not a bug) — and separately, `main` has
-      no version of `contracts/auth.v1.yaml` to diff against yet until this branch
-      merges. Real gap: install `oasdiff` (environment setup script, same category
-      as the .NET SDK item under 0.5) before this check does anything
+      names downstream consumers — **`oasdiff` is now installed and `tpx contract lint`
+      runs its real breaking-change diff** (confirmed this session: both
+      `contracts/auth.v1.yaml` and `contracts/documents.v1.yaml` lint clean with no
+      breaking change vs `main`). The tool-missing blocker from earlier sessions no
+      longer applies. Still not re-checked: the destructive case itself (actually
+      remove a required field on a throwaway branch and confirm the lint fails, and
+      that `contract-guardian` names the right downstream consumers) — that needs a
+      deliberate branch edit, not done this session.
 - [ ] 8. A background `dotnet-implementer` run on a worktree produces a green
       `tpx verify auth` and a PR via `gh` — **partially demonstrated**: `module-architect`,
-      `dotnet-implementer`, and `test-writer` all ran as background subagents this
-      session and each produced a green `tpx verify auth`, but none ran inside an
-      isolated worktree specifically, and no PR was opened by an agent directly
-      (`gh` isn't installed in this sandbox either — the GitHub MCP tools stand in
-      for it here). Worth a real run once there's a natural small follow-up task.
-- [ ] 9. The Friday `/schedule` routine executes on demand and writes a review +
+      `dotnet-implementer`, and `test-writer` all ran as background subagents in an
+      earlier session and each produced a green `tpx verify auth`, but none ran inside
+      an isolated worktree specifically, and no PR was opened by an agent directly.
+      `gh` is confirmed installed now, so that's no longer a blocker — the only gap is
+      an actual end-to-end run. Worth doing once there's a natural small follow-up task.
+- [x] 9. The Friday `/schedule` routine executes on demand and writes a review +
       `GOALS.md` progress summary — the routine (`trig_01Ab56gX37f3vCqfXA1nqqJD`,
-      "TPXSoft Weekly Review", Fridays 16:00 UTC) exists, is enabled, and last ran
-      2026-08-21; deliberately **not** fired on demand this session to avoid an
-      unplanned second PR/branch outside this task's scope
+      "TPXSoft Weekly Review", Fridays 16:00 UTC) exists, is enabled; user ran it and
+      confirmed it works (not independently re-verified by tooling this session)
 
 ## Phase 1 — Auth module
 
@@ -174,20 +170,32 @@ generically "not done" — see each line.
 - [x] `contracts/auth.v1.yaml` exists and is the source of truth
 - [x] Auth MCP server built (becomes the template for `new-module`)
 - [ ] All Phase 0 verification items (above) pass using Auth as the guinea pig —
-      6 of 9 do; the other 3 are blocked by this sandbox's missing Docker daemon,
-      missing `oasdiff`, and a deliberately-not-fired schedule (see each item above)
+      7 of 9 do; the other 2 are an untested destructive contract-lint case
+      (item 7 — `oasdiff` itself is installed and working) and a not-yet-run
+      end-to-end worktree-to-PR `dotnet-implementer` run (item 8; see each item above)
 
 Implemented (Domain/Infrastructure/Api/Mcp + 35 unit tests + 13 integration tests),
 `tpx verify auth` green (~11s). Not yet merged to `main`.
 
 ## Phase 2 — Documents module
 
-- [ ] `modules/documents/` implemented: upload, versioning, metadata, permissions
-      delegated to Auth
-- [ ] .NET Aspire introduced for local orchestration
-- [ ] Cross-module wiring via generated client, verified by `contract-guardian`
+- [x] `modules/documents/` implemented: all 7 features from
+      [`modules/documents/documentation/`](modules/documents/documentation/) are built and
+      committed — upload (01), virtual folders (02), rename/move/delete (03),
+      sharing/visibility (04), preview/download (05), update content (06), manage folders
+      (07). `tpx verify documents` green in 10.9s: 180/180 unit tests pass, 0 warnings.
+      Integration tests (`TPXSoft.Documents.IntegrationTests`) confirmed this session
+      against real Postgres via Testcontainers: 82/82 pass in 21s. Documents module has
+      its own MCP server too (`tpxsoft-documents`, see 0.7).
+- [ ] .NET Aspire introduced for local orchestration — not done; module still runs
+      standalone against `docker-compose.yml` Postgres like Auth.
+- [ ] Cross-module wiring via generated client, verified by `contract-guardian` — not
+      done; Documents has no consumers yet and doesn't call Auth over HTTP (permissions
+      are `sub`/`orgId` claims off the same JWT, not a live call to Auth — see
+      `modules/documents/CLAUDE.md` "Known assumptions").
 
-Not started — blocked on Phase 1 (Auth).
+Core module substantially done (7/7 features, unit-tested, contract-lint clean);
+Aspire orchestration and cross-module wiring are the remaining Phase 2 items.
 
 ## Phase 3 — Sharepoint-lite
 
