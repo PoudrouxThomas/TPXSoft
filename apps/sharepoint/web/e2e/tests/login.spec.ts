@@ -1,28 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { mockEmptyRoot, mockLogin } from './support/mock-documents';
 
 test('logging in with valid credentials redirects to home and shows the user email', async ({
     page,
 }) => {
-    await page.route('**/auth/login', async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ accessToken: 'access-token', refreshToken: 'refresh-token' }),
-        });
-    });
-    await page.route('**/auth/me', async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-                id: 'user-1',
-                email: 'jane@example.com',
-                orgId: 'org-1',
-                orgName: 'Acme',
-                role: 'Admin',
-            }),
-        });
-    });
+    await mockLogin(page);
+    await mockEmptyRoot(page);
 
     await page.goto('/login');
 

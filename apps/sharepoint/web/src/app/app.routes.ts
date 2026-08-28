@@ -12,7 +12,8 @@ export const routes: Routes = [
     },
     {
         path: '',
-        loadComponent: () => import('./features/home/home').then((m) => m.Home),
+        loadComponent: () =>
+            import('./features/files/file-explorer/file-explorer').then((m) => m.FileExplorer),
         canActivate: [authGuard],
     },
     { path: '**', redirectTo: '' },

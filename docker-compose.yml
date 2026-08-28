@@ -44,6 +44,7 @@ services:
       ConnectionStrings__DocumentsDb: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tpxsoft};Username=${POSTGRES_USER:-tpxsoft};Password=${POSTGRES_PASSWORD:-tpxsoft}
       Documents__Jwt__SigningKey: ${AUTH_JWT_SIGNING_KEY:-dev-only-jwt-signing-key-do-not-use-in-production-01234567}
       Documents__ApplyMigrationsAtStartup: "true"
+      Documents__Cors__AllowedOrigins__0: http://localhost:4200
     ports:
       - "${DOCUMENTS_PORT:-5082}:8080"
 

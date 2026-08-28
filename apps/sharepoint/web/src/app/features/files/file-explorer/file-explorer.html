@@ -1,0 +1,116 @@
+<mat-toolbar color="primary">
+    <span class="toolbar-title">TPXSoft Files</span>
+    <span class="toolbar-spacer"></span>
+    @if (authService.currentUser(); as user) {
+        <span class="user-email">{{ user.email }}</span>
+    }
+    <button mat-button type="button" (click)="onLogout()">Log out</button>
+</mat-toolbar>
+
+<div class="explorer-page">
+    <div class="explorer-toolbar">
+        <button mat-flat-button type="button" (click)="onCreateFolder()">
+            <mat-icon>create_new_folder</mat-icon>
+            New folder
+        </button>
+        <button mat-flat-button type="button" (click)="triggerUpload()" [disabled]="uploading()">
+            <mat-icon>upload_file</mat-icon>
+            Upload
+        </button>
+        <input
+            #fileInput
+            type="file"
+            multiple
+            class="visually-hidden-input"
+            (change)="onFileInputChange($event)"
+        />
+        @if (uploading()) {
+            <mat-progress-spinner mode="indeterminate" diameter="20" />
+        }
+    </div>
+
+    <nav class="breadcrumbs">
+        <button mat-button type="button" (click)="goToRoot()">My files</button>
+        @for (crumb of breadcrumbs(); track crumb.id; let i = $index) {
+            <span>/</span>
+            <button mat-button type="button" (click)="goToCrumb(i)">{{ crumb.name }}</button>
+        }
+    </nav>
+
+    @if (errorMessage()) {
+        <p class="error-message">{{ errorMessage() }}</p>
+    }
+
+    @if (loading()) {
+        <div class="loading">
+            <mat-progress-spinner mode="indeterminate" diameter="32" />
+        </div>
+    } @else if (isEmpty()) {
+        <p class="empty-message">This folder is empty.</p>
+    } @else {
+        <div class="entry-list">
+            @for (folder of folders(); track folder.id) {
+                <div class="entry-row">
+                    <button
+                        mat-button
+                        type="button"
+                        class="entry-name"
+                        (click)="openFolder(folder)"
+                    >
+                        <mat-icon>folder</mat-icon>
+                        <span>{{ folder.name }}</span>
+                    </button>
+                    <button
+                        mat-icon-button
+                        type="button"
+                        [matMenuTriggerFor]="folderMenu"
+                        [attr.aria-label]="'Folder actions for ' + folder.name"
+                    >
+                        <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #folderMenu="matMenu">
+                        <button mat-menu-item type="button" (click)="deleteFolder(folder)">
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete</span>
+                        </button>
+                    </mat-menu>
+                </div>
+            }
+            @for (document of documents(); track document.id) {
+                <div class="entry-row">
+                    <button
+                        mat-button
+                        type="button"
+                        class="entry-name"
+                        (click)="previewDocument(document)"
+                    >
+                        <mat-icon>description</mat-icon>
+                        <span>{{ document.fileName }}</span>
+                    </button>
+                    <button
+                        mat-icon-button
+                        type="button"
+                        [matMenuTriggerFor]="documentMenu"
+                        [attr.aria-label]="'Document actions for ' + document.fileName"
+                    >
+                        <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #documentMenu="matMenu">
+                        <button mat-menu-item type="button" (click)="previewDocument(document)">
+                            <mat-icon>visibility</mat-icon>
+                            <span>Preview</span>
+                        </button>
+                        <button mat-menu-item type="button" (click)="moveDocument(document)">
+                            <mat-icon>drive_file_move</mat-icon>
+                            <span>Move</span>
+                        </button>
+                        <button mat-menu-item type="button" (click)="deleteDocument(document)">
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete</span>
+                        </button>
+                    </mat-menu>
+                </div>
+            }
+        </div>
+    }
+</div>
