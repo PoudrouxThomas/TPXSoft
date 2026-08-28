@@ -18,10 +18,18 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
       `hook <name>`) — builds clean and runs; `contract lint`, `verify boundaries` and
       `verify --affected` each executed and exited 0 with the documented "nothing found"
       output
-- [x] `gh`, `pnpm`, and `oasdiff` all confirmed on `PATH` in this environment
-      (`gh`, `pnpm`, `oasdiff`, `dotnet --version` → 9.0.306) — checked directly this
-      session, not inferred. `contract lint` now runs its real breaking-change diff
-      instead of skipping it (see Phase 0 completion item 7).
+- [x] `gh`, `pnpm`, and `oasdiff` all confirmed on `PATH` in this environment. This
+      session's container had neither `dotnet` nor `oasdiff` preinstalled: recovered via
+      `apt-get install -y dotnet-sdk-10.0` (only .NET 8/10 are packaged for Ubuntu
+      24.04, no 9.0 — the tree targets `net9.0`, so every `tpx`/`dotnet` invocation needs
+      `DOTNET_ROLL_FORWARD=LatestMajor` in env) and by fetching the `oasdiff` release
+      binary directly from `github.com/oasdiff/oasdiff` (its `/latest/download/` alias
+      404s — GitHub redirects aren't followed through this environment's egress proxy —
+      but a pinned `/releases/download/vX.Y.Z/...` URL works). Confirms PLAN.md §0.5's
+      recorded recipe. `contract lint` runs its real breaking-change diff, not skipping
+      it (see Phase 0 completion item 7); re-run this session: both contracts lint clean,
+      `tpx verify auth` green in 34.7s, `tpx verify documents` green in 21.2s,
+      `tpx verify boundaries` clean.
 
 ### 0.3 Subagents (`.claude/agents/`)
 
@@ -105,9 +113,17 @@ routines and subagents").
 
 ### 0.9 Capstone (do after Phase 1)
 
-- [ ] `.claude/agents` + `.claude/skills` + hooks bundled into a `tpxsoft` plugin,
-      validated with `claude plugin eval` — blocked: deferred until after Phase 1
-- [ ] Headless `claude -p` PR-review job in CI — blocked: no CI workflows exist yet
+- [x] `.claude/agents` + `.claude/skills` + hooks bundled into a `tpxsoft` plugin —
+      **done, was unchecked in error.** `plugin/marketplace/` exists (`.claude-plugin/marketplace.json`,
+      `plugins/tpxsoft/` with `agents/`, `skills/`, `hooks/`, `.claude-plugin/plugin.json`);
+      confirmed this session: `claude plugin validate plugin/marketplace/plugins/tpxsoft`
+      passes. `claude plugin eval` itself is early-access-gated on this account (not
+      usable) — `validate` is the working gate, per PLAN.md §0.9.
+- [ ] Headless `claude -p` PR-review job in CI — **dropped by user decision**, not a
+      blocker to chase: it would run on a GitHub cloud runner needing its own paid
+      `ANTHROPIC_API_KEY` (no free tier), and the user declined the cost (PLAN.md §0.9).
+      `.github/workflows/auth.yml`/`documents.yml` exist now, so "no CI workflows exist"
+      is no longer the actual reason this is undone.
 
 ### 0.10 CLAUDE.md hierarchy (do after Phase 1's first module)
 
@@ -200,10 +216,25 @@ Aspire orchestration and cross-module wiring are the remaining Phase 2 items.
 ## Phase 3 — Sharepoint-lite
 
 - [ ] `apps/sharepoint/api` and `apps/sharepoint/web` (Angular) consuming both
-      Auth and Documents
-- [ ] Auth extracted to its own repository
+      Auth and Documents — **partially started**: `apps/sharepoint/web` exists
+      (Angular CLI workspace, `apps/sharepoint/web/src/app`) with a login/register/home
+      feature set (`features/auth/login`, `features/auth/register`, `features/home`)
+      and an `AuthService`/`authGuard`/`authInterceptor` under `core/auth/`, consuming
+      the generated `@tpxsoft/auth-client` (contract-first, not hand-rolled HTTP) —
+      confirmed by reading `auth.service.ts`. `apps/sharepoint/api` does not exist yet,
+      and the web app has no Documents-module integration yet. Blocking: the API base
+      URL is hardcoded in `app.config.ts` (`provideApiConfiguration('http://localhost:5080')`)
+      with no environment-based config, and that hardcoded port now disagrees with the
+      docker-compose workflow added this same week — `docker-compose.yml`'s `auth-api`
+      service maps to host port `5081` by default (`AUTH_PORT:-5081`), not `5080` (the
+      `dotnet run` `launchSettings.json` port the Angular app was hardcoded against).
+      Confirmed by reading both files this session: running `docker compose up -d` and
+      serving the Angular app as currently checked in will point login/register at a
+      port nothing is listening on unless `AUTH_PORT=5080` is set explicitly.
+- [ ] Auth extracted to its own repository — not started
 
-Not started — blocked on Phases 1–2.
+Started this week (frontend scaffolding + Auth login/register), well ahead of the
+`apps/sharepoint/api` and Documents-integration work still to do.
 
 ## Phase 4+ — Word, Onenote, Forms, Outlook, Teams
 
