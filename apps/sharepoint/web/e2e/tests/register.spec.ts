@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockEmptyRoot } from './support/mock-documents';
 
 test('registering with valid details redirects to home and shows the user email', async ({
     page,
@@ -23,6 +24,7 @@ test('registering with valid details redirects to home and shows the user email'
             }),
         });
     });
+    await mockEmptyRoot(page);
 
     await page.goto('/register');
 

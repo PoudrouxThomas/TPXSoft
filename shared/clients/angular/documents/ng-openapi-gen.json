@@ -1,0 +1,7 @@
+{
+    "input": "contracts/documents.v1.yaml",
+    "output": "shared/clients/angular/documents/src",
+    "ignoreUnusedModels": false,
+    "services": true,
+    "indexFile": true
+}

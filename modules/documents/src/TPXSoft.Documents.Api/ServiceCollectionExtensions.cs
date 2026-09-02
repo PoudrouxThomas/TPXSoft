@@ -1,16 +1,22 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TPXSoft.Documents.Api.Contracts;
+using TPXSoft.Documents.Api.Options;
 using TPXSoft.Documents.Infrastructure.Options;
 
 namespace TPXSoft.Documents.Api;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>Name of the CORS policy registered by <see cref="AddDocumentsApiCors"/>, for
+    /// <c>app.UseCors(...)</c> to reference.</summary>
+    public const string DocumentsCorsPolicyName = "DocumentsApiCors";
+
     /// <summary>Wires ASP.NET Core JWT bearer authentication against JwtOptions (bound and
     /// validated by AddDocumentsInfrastructure). This module issues no tokens of its own -- it
     /// validates the same access tokens TPXSoft.Auth issues. HTTP-specific, so it lives in Api
@@ -65,6 +71,26 @@ public static class ServiceCollectionExtensions
             {
                 formOptions.MultipartBodyLengthLimit = documentsOptionsAccessor.Value.MaxUploadBytes;
             });
+
+        return services;
+    }
+
+    /// <summary>Registers a named CORS policy allowing the configured origin(s)
+    /// (Documents:Cors:AllowedOrigins) any header/method -- no wildcard origin. Empty by default
+    /// (see appsettings.json); appsettings.Development.json sets it to the Angular dev server.</summary>
+    public static IServiceCollection AddDocumentsApiCors(this IServiceCollection services, IConfiguration configuration)
+    {
+        var corsOptions = configuration.GetSection("Documents:Cors").Get<DocumentsCorsOptions>() ?? new DocumentsCorsOptions();
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy(DocumentsCorsPolicyName, policy =>
+            {
+                policy.WithOrigins(corsOptions.AllowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
 
         return services;
     }

@@ -1,0 +1,18 @@
+<h2 mat-dialog-title>{{ data.document.fileName }}</h2>
+<mat-dialog-content class="preview-content">
+    @if (loading()) {
+        <mat-progress-spinner mode="indeterminate" diameter="32" />
+    } @else if (errorMessage()) {
+        <p class="error-message">{{ errorMessage() }}</p>
+    } @else if (kind() === 'image' && previewUrl(); as url) {
+        <img [src]="url" [alt]="data.document.fileName" />
+    } @else if (kind() === 'embed' && previewUrl(); as url) {
+        <iframe [src]="url" [title]="data.document.fileName"></iframe>
+    } @else {
+        <p class="empty-message">No preview available for this file type.</p>
+    }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close>Close</button>
+    <button mat-flat-button type="button" (click)="downloadInstead()">Download</button>
+</mat-dialog-actions>

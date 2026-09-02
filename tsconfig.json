@@ -17,7 +17,9 @@
         "baseUrl": ".",
         "paths": {
             "@tpxsoft/auth-client": ["shared/clients/angular/src/index.ts"],
-            "@tpxsoft/auth-client/*": ["shared/clients/angular/src/*"]
+            "@tpxsoft/auth-client/*": ["shared/clients/angular/src/*"],
+            "@tpxsoft/documents-client": ["shared/clients/angular/documents/src/index.ts"],
+            "@tpxsoft/documents-client/*": ["shared/clients/angular/documents/src/*"]
         }
     },
     "angularCompilerOptions": {

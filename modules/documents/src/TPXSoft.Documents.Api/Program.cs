@@ -16,6 +16,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddDocumentsInfrastructure(builder.Configuration);
 builder.Services.AddDocumentsApi();
+builder.Services.AddDocumentsApiCors(builder.Configuration);
 
 var app = builder.Build();
 
@@ -25,6 +26,7 @@ if (app.Configuration.GetValue<bool>("Documents:ApplyMigrationsAtStartup"))
     migrationScope.ServiceProvider.GetRequiredService<DocumentsDbContext>().Database.Migrate();
 }
 
+app.UseCors(ServiceCollectionExtensions.DocumentsCorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 

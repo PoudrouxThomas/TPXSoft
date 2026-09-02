@@ -90,15 +90,17 @@ internal static class Contracts
             ranAnything = true;
         }
 
-        var ngConfig = Path.Combine(Modules.RepoRoot, "shared", "clients", "angular", "ng-openapi-gen.json");
-        if (File.Exists(ngConfig))
+        var angularClientsDir = Path.Combine(Modules.RepoRoot, "shared", "clients", "angular");
+        if (Directory.Exists(angularClientsDir))
         {
-            if (!Shell.Exists("ng-openapi-gen"))
+            foreach (var ngConfig in Directory.GetFiles(angularClientsDir, "ng-openapi-gen.json", SearchOption.AllDirectories))
             {
-                Console.Error.WriteLine($"tpx gen: found {ngConfig} but 'ng-openapi-gen' is not installed (npm i -g ng-openapi-gen)");
-            }
-            else
-            {
+                if (!Shell.Exists("ng-openapi-gen"))
+                {
+                    Console.Error.WriteLine($"tpx gen: found {ngConfig} but 'ng-openapi-gen' is not installed (npm i -g ng-openapi-gen)");
+                    continue;
+                }
+
                 Console.WriteLine($"tpx gen: ng-openapi-gen -c \"{ngConfig}\"");
                 Shell.Run("ng-openapi-gen", $"-c \"{ngConfig}\"");
                 ranAnything = true;
