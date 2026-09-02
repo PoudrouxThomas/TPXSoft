@@ -6,6 +6,7 @@ import { provideApiConfiguration } from '@tpxsoft/auth-client/api-configuration'
 import { provideApiConfiguration as provideDocumentsApiConfiguration } from '@tpxsoft/documents-client/api-configuration';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -13,7 +14,7 @@ export const appConfig: ApplicationConfig = {
         provideRouter(routes),
         provideHttpClient(withInterceptors([authInterceptor])),
         provideAnimationsAsync(),
-        provideApiConfiguration('http://localhost:5080'),
-        provideDocumentsApiConfiguration('http://localhost:5082'),
+        provideApiConfiguration(environment.authApiUrl),
+        provideDocumentsApiConfiguration(environment.documentsApiUrl),
     ],
 };

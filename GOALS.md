@@ -229,20 +229,47 @@ Aspire orchestration and cross-module wiring are the remaining Phase 2 items.
       feature set (`features/auth/login`, `features/auth/register`, `features/home`)
       and an `AuthService`/`authGuard`/`authInterceptor` under `core/auth/`, consuming
       the generated `@tpxsoft/auth-client` (contract-first, not hand-rolled HTTP) —
-      confirmed by reading `auth.service.ts`. `apps/sharepoint/api` does not exist yet,
-      and the web app has no Documents-module integration yet. Blocking: the API base
-      URL is hardcoded in `app.config.ts` (`provideApiConfiguration('http://localhost:5080')`)
-      with no environment-based config, and that hardcoded port now disagrees with the
-      docker-compose workflow added this same week — `docker-compose.yml`'s `auth-api`
-      service maps to host port `5081` by default (`AUTH_PORT:-5081`), not `5080` (the
-      `dotnet run` `launchSettings.json` port the Angular app was hardcoded against).
-      Confirmed by reading both files this session: running `docker compose up -d` and
-      serving the Angular app as currently checked in will point login/register at a
-      port nothing is listening on unless `AUTH_PORT=5080` is set explicitly.
+      confirmed by reading `auth.service.ts`. Documents-module integration is now also
+      in: `core/documents/documents.service.ts` plus `features/files/` (`file-explorer`,
+      `preview-dialog`, `move-document-dialog`), consuming the generated
+      `@tpxsoft/documents-client` — user manually tested the web app end to end and
+      confirmed it works. `apps/sharepoint/api` still does not exist (no ASP.NET Core
+      host under `apps/sharepoint/api` — ls confirmed this session).
+      Port-mismatch/no-env-config blocker from prior session is **fixed** this session:
+      added `environments/environment.ts` (prod defaults) and
+      `environments/environment.development.ts` (dev), wired via `fileReplacements` in
+      `angular.json`'s `development` build configuration; `app.config.ts` now reads
+      `environment.authApiUrl`/`environment.documentsApiUrl` instead of hardcoded
+      strings. Both dev values point at `5081`/`5082`, matching `docker-compose.yml`'s
+      `AUTH_PORT:-5081`/`DOCUMENTS_PORT:-5082` defaults. `npx ng build sharepoint-web
+      --configuration development` and `--configuration production` both build clean;
+      grepping the dev bundle confirmed `localhost:5081`/`localhost:5082` baked in.
+      Separately found (pre-existing, unrelated to this fix, not fixed here):
+      `npx ng test sharepoint-web` fails to compile — `auth.service.spec.ts` and
+      `file-explorer.spec.ts` build `User` fixtures missing the `createdAt` field added
+      in PR #20 — flagged as its own follow-up task.
+
+      **Live end-to-end login confirmed working** in a follow-up session: user ran
+      `docker compose up -d` and hit a real CORS failure on `OPTIONS /auth/login`. Root
+      cause found and fixed — not a code/CORS-config bug (`Auth:Cors:AllowedOrigins` was
+      already wired correctly via `docker-compose.yml`'s `Auth__Cors__AllowedOrigins__0`
+      env var). Actual cause: root `.env` (gitignored, not in version control) had a
+      stale `AUTH_PORT=5080` left over from before the port scheme changed to `5081`,
+      overriding `docker-compose.yml`'s own default and disagreeing with
+      `.env.example` (which already correctly said `5081`) — so `auth-api` was
+      listening on `5080` while the newly-fixed frontend correctly called `5081`, and
+      the browser reported the resulting failed/refused preflight as a generic CORS
+      error. Fixed by correcting `.env`'s `AUTH_PORT` to `5081` and recreating
+      containers (`docker compose up -d --force-recreate`). Verified after the fix:
+      `curl` preflight to `/auth/login` returns `204` with the correct
+      `Access-Control-Allow-Origin` header, `/auth/register` and `/auth/login` both
+      return `201`/`200` with tokens, and a real browser session (navigate to
+      `localhost:4200`, fill the login form, submit) successfully logs in and lands on
+      the file explorer with no console errors.
 - [ ] Auth extracted to its own repository — not started
 
-Started this week (frontend scaffolding + Auth login/register), well ahead of the
-`apps/sharepoint/api` and Documents-integration work still to do.
+Remaining before this box can check: build `apps/sharepoint/api`. Port/config and live
+login are now confirmed working end to end.
 
 ## Phase 4+ — Word, Onenote, Forms, Outlook, Teams
 
