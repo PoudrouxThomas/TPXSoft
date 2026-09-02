@@ -70,4 +70,10 @@ if [ -f "$AUTH_MCP_PROJ" ]; then
         echo "session-start: TPXSoft.Auth.Mcp build failed, tpxsoft-auth MCP server may not connect" >&2
 fi
 
+DOCUMENTS_MCP_PROJ="$PROJECT_DIR/modules/documents/src/TPXSoft.Documents.Mcp/TPXSoft.Documents.Mcp.csproj"
+if [ -f "$DOCUMENTS_MCP_PROJ" ]; then
+    dotnet build "$DOCUMENTS_MCP_PROJ" --nologo -v quiet >&2 || \
+        echo "session-start: TPXSoft.Documents.Mcp build failed, tpxsoft-documents MCP server may not connect" >&2
+fi
+
 exit 0
