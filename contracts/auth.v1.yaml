@@ -190,7 +190,7 @@ components:
 
     User:
       type: object
-      required: [id, email, orgId, orgName, role]
+      required: [id, email, orgId, orgName, role, createdAt]
       properties:
         id:
           type: string
@@ -205,6 +205,9 @@ components:
           type: string
         role:
           $ref: "#/components/schemas/Role"
+        createdAt:
+          type: string
+          format: date-time
 
     Error:
       type: object

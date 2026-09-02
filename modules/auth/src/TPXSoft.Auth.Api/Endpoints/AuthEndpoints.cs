@@ -85,7 +85,7 @@ public static class AuthEndpoints
 
         var domainUser = result.Value;
         var org = await orgRepository.GetByIdAsync(domainUser.OrgId, cancellationToken);
-        return Results.Ok(new UserResponse(domainUser.Id, domainUser.Email, domainUser.OrgId, org?.Name ?? string.Empty, domainUser.Role));
+        return Results.Ok(new UserResponse(domainUser.Id, domainUser.Email, domainUser.OrgId, org?.Name ?? string.Empty, domainUser.Role, domainUser.CreatedAt));
     }
 
     private static IResult ErrorResult(AuthError error)

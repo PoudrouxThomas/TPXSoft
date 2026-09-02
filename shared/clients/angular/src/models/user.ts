@@ -3,6 +3,7 @@
 
 import { Role } from '../models/role';
 export interface User {
+  createdAt: string;
   email: string;
   id: string;
   orgId: string;
