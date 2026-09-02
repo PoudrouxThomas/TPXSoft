@@ -85,7 +85,7 @@ public static class ContractTools
         return SerializeYamlNode(schema);
     }
 
-    [McpServerTool(Name = "find_consumers"), Description("Greps shared/clients/** and other modules' src/** for references to an entity or field name, to find what would break if it changed.")]
+    [McpServerTool(Name = "find_consumers"), Description("Greps shared/clients/**, other modules' src/**, and apps/**/src/** for references to an entity or field name, to find what would break if it changed.")]
     public static string FindConsumers([Description("Entity or field name to search for, e.g. User, orgId, refreshToken")] string entityOrField)
     {
         var repoRoot = RepoPaths.RepoRoot;
@@ -109,8 +109,20 @@ public static class ContractTools
             }
         }
 
+        var appsDir = Path.Combine(repoRoot, "apps");
+        if (Directory.Exists(appsDir))
+        {
+            foreach (var appDir in Directory.GetDirectories(appsDir))
+            foreach (var projectDir in Directory.GetDirectories(appDir))
+            {
+                var src = Path.Combine(projectDir, "src");
+                if (Directory.Exists(src))
+                    searchRoots.Add(src);
+            }
+        }
+
         if (searchRoots.Count == 0)
-            return "No shared/clients/ and no other modules exist yet -- Auth is the first module, so it has no consumers to find.";
+            return "No shared/clients/, no other modules, and no apps/ exist yet -- Auth is the first module, so it has no consumers to find.";
 
         var matches = new List<string>();
         foreach (var root in searchRoots)
