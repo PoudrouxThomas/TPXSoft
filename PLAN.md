@@ -170,17 +170,43 @@ location per machine — two `tpx worktree new` sessions running SessionStart co
 on the same machine will race, and whichever finishes last wins for both. Revisit
 (e.g. a per-worktree local tool manifest) if that collision is ever actually observed.
 
-**Still open — persistent .NET SDK provisioning.** The SessionStart hook above only builds
-`tpx` *if* `dotnet` is already on `PATH`; it does not install the SDK itself. A fresh cloud
-container still has no .NET SDK pre-installed. Working recipe, verified end to end in this
-session: `apt-get install -y dotnet-sdk-10.0`, plus `DOTNET_ROLL_FORWARD=Major` as an
-environment variable (`builds.dotnet.microsoft.com`, where `dotnet-install.sh` fetches from,
-is *not* on the Trusted egress allowlist and 403s, while `dotnet.microsoft.com`/`nuget.org`
-resolve fine; Ubuntu 24.04 has no `dotnet-sdk-9.0` package but SDK 10 builds this `net9.0`
-tree and roll-forward runs the output). This belongs in the cloud environment's own setup
-script (claude.ai/code environment settings, not repo content) — until someone applies it
-there, every fresh cloud session needs the `apt-get install` run by hand once before the
-SessionStart hook has anything to build.
+**Fixed — persistent .NET SDK provisioning.** The SessionStart hook above only builds
+`tpx` *if* `dotnet` is already on `PATH`; it does not install the SDK itself, so a fresh
+cloud container needed the SDK provisioned before SessionStart ran. The environment's own
+setup script (claude.ai/code environment settings → this environment → "Script de
+configuration") used to run Microsoft's `curl -sSL https://dot.net/v1/dotnet-install.sh |
+bash -s -- --channel 10.0`, which failed *silently* — both `dot.net` and
+`builds.dotnet.microsoft.com` (where that script fetches the actual SDK archive from) are
+hard-blocked by this environment's network policy (`CONNECT tunnel failed, response 403`),
+so the piped `curl` produced no input for `bash` and nothing errored loudly. The separate
+`DOTNET_ROLL_FORWARD=Major` environment variable (an unconditional env-var field, unrelated
+to the setup script) was always present regardless, which made the failure easy to miss.
+Root-caused and fixed in a later session: the setup script now runs
+`apt-get update && apt-get install -y dotnet-sdk-10.0` — `archive.ubuntu.com` /
+`security.ubuntu.com` are not blocked by the same policy. Verified end to end in a fresh
+session with zero manual setup: `dotnet --version` reports `10.0.111` from the first turn,
+`dpkg -l | grep dotnet` shows `dotnet-sdk-10.0` installed by the setup script (confirmed via
+`/var/log/apt/history.log` timestamp, before any session commands ran), and
+`which tpx && tpx --help` works immediately (SessionStart's `tpx` install had a real SDK to
+build against). `DOTNET_ROLL_FORWARD=Major` is still needed and still set, since Ubuntu 24.04
+ships no `dotnet-sdk-9.0` package — SDK 10 builds this `net9.0` tree and roll-forward runs
+the output. The manual `apt-get install` workaround is no longer needed for fresh sessions.
+
+**New, separate issue found while verifying the fix above — MCP server launch races
+SessionStart's build.** `tpxsoft-auth` / `tpxsoft-documents` still showed
+`CONNECTION_CLOSED` in a fresh session even with the SDK fix in place — a *different*
+failure than the old `ENOENT: dotnet`. Diagnosis: SessionStart's `dotnet build` of the two
+MCP server DLLs (§0.7) finished a couple of minutes into the session (`~19:13`, timestamps
+confirmed via `stat` on the built DLLs vs. the repo clone and apt-install timestamps), but
+Claude Code's MCP client evidently attempts to connect to configured `.mcp.json` servers at
+session init, before SessionStart finishes — so it hits a DLL that doesn't exist yet (or a
+stale one) and gives up with no retry. Manually running either DLL after the hook finished
+(`dotnet exec .../TPXSoft.Auth.Mcp.dll`, `DOTNET_ROLL_FORWARD=Major` set) starts and shuts
+down cleanly — the binaries and roll-forward setup are fine; it's purely a startup-ordering
+race between MCP server launch and the hook that builds their binaries. Not yet fixed; needs
+either the MCP client waiting on SessionStart completion, or pre-building these DLLs as part
+of the environment's own setup script (next to the `apt-get install` above) rather than at
+SessionStart.
 
 ### 0.6 Worktrees — done
 
