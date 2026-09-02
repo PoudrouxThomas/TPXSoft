@@ -21,6 +21,7 @@ public sealed class AuthEndpointsFlowTests : AuthIntegrationTestBase
     {
         const string email = "roundtrip@example.com";
 
+        var beforeRegister = DateTimeOffset.UtcNow;
         var registerResponse = await Client.PostAsJsonAsync("/auth/register",
             new { email, password = "correct-horse-battery", orgName = "Acme Inc" });
         Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
@@ -42,6 +43,8 @@ public sealed class AuthEndpointsFlowTests : AuthIntegrationTestBase
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.NotEqual(Guid.Empty, user.OrgId);
         Assert.Equal("Acme Inc", user.OrgName);
+        Assert.True(user.CreatedAt >= beforeRegister, "CreatedAt should be at or after the moment registration started.");
+        Assert.True(user.CreatedAt <= DateTimeOffset.UtcNow, "CreatedAt should not be in the future.");
     }
 
     [Fact]
