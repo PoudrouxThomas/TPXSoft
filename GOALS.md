@@ -65,12 +65,18 @@ routines and subagents").
 - [x] PostToolUse on Edit/Write running build/lint for the touched project
       (`tpx hook verify-on-save`)
 - [x] Stop hook running `tpx verify --affected` (`tpx hook stop-verify`)
-- [ ] .NET SDK provisioned automatically in fresh cloud containers — blocked: that's an
-      environment-setup-script change outside the repo (claude.ai/code environment
-      settings), not something a SessionStart hook can do. Verified working recipe is
-      recorded in PLAN.md §0.5 (`apt-get install -y dotnet-sdk-10.0` +
-      `DOTNET_ROLL_FORWARD=Major`); until applied there, run it by hand once per fresh
-      session before the SessionStart hook above has anything to build.
+- [x] .NET SDK provisioned automatically in fresh cloud containers — the environment's own
+      setup script (claude.ai/code environment settings, outside this repo) now runs
+      `apt-get install -y dotnet-sdk-10.0` + `DOTNET_ROLL_FORWARD=Major`, replacing the old
+      `dotnet-install.sh` `curl | bash` recipe that silently failed against this
+      environment's network policy. Verified end to end in a fresh session with zero manual
+      setup: `dotnet --version`, `tpx --help`, and the SessionStart hook's build all work
+      from the first turn (PLAN.md §0.5). The manual `apt-get install` workaround is no
+      longer needed. Separate, still-open issue found during this verification: the
+      `tpxsoft-auth`/`tpxsoft-documents` MCP servers can still show `CONNECTION_CLOSED` in a
+      fresh session — a startup-ordering race where Claude Code's MCP client connects before
+      SessionStart's build of their DLLs finishes, not a `dotnet`-missing problem (PLAN.md
+      §0.5).
 
 ### 0.6 Worktrees
 
