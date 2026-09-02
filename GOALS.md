@@ -157,15 +157,19 @@ a specific, named blocker rather than being generically "not done" — see each 
       over stdio JSON-RPC returns the correct schema, sourced from
       `contracts/auth.v1.yaml`). Not separately re-confirmed by spawning a literal
       fresh Claude Code session and observing its tool choice.
-- [ ] 7. `tpx contract lint` fails on a removed required field, `contract-guardian`
-      names downstream consumers — **`oasdiff` is now installed and `tpx contract lint`
-      runs its real breaking-change diff** (confirmed this session: both
-      `contracts/auth.v1.yaml` and `contracts/documents.v1.yaml` lint clean with no
-      breaking change vs `main`). The tool-missing blocker from earlier sessions no
-      longer applies. Still not re-checked: the destructive case itself (actually
-      remove a required field on a throwaway branch and confirm the lint fails, and
-      that `contract-guardian` names the right downstream consumers) — that needs a
-      deliberate branch edit, not done this session.
+- [x] 7. `tpx contract lint` fails on a removed required field, `contract-guardian`
+      names downstream consumers — **fully confirmed on a throwaway branch**
+      (`tmp/contract-lint-test`): removing `role` from `User.required` in
+      `contracts/auth.v1.yaml` made `tpx contract lint` fail with
+      `response-property-became-optional` on `GET /auth/me`, as expected. Running
+      `find_consumers("role")` against that branch then caught a real bug: the tool
+      only grepped `shared/clients/**` and `modules/*/src/**`, silently missing
+      `apps/**` — so it failed to report that `apps/sharepoint/web/src/app/**` has
+      real `User.role` consumers (`auth.service.spec.ts`, `file-explorer.spec.ts`).
+      Fixed in `FindConsumers` (both `modules/auth/src/TPXSoft.Auth.Mcp/ContractTools.cs`
+      and `modules/documents/src/TPXSoft.Documents.Mcp/ContractTools.cs`) to also walk
+      `apps/*/*/src/**`; re-run confirmed both fixture files now surface. `tpx verify
+      auth` and `tpx verify documents` both green after the fix.
 - [ ] 8. A background `dotnet-implementer` run on a worktree produces a green
       `tpx verify auth` and a PR via `gh` — **partially demonstrated**: `module-architect`,
       `dotnet-implementer`, and `test-writer` all ran as background subagents in an
@@ -186,9 +190,8 @@ a specific, named blocker rather than being generically "not done" — see each 
 - [x] `contracts/auth.v1.yaml` exists and is the source of truth
 - [x] Auth MCP server built (becomes the template for `new-module`)
 - [ ] All Phase 0 verification items (above) pass using Auth as the guinea pig —
-      7 of 9 do; the other 2 are an untested destructive contract-lint case
-      (item 7 — `oasdiff` itself is installed and working) and a not-yet-run
-      end-to-end worktree-to-PR `dotnet-implementer` run (item 8; see each item above)
+      8 of 9 do; the remaining gap is a not-yet-run end-to-end worktree-to-PR
+      `dotnet-implementer` run (item 8; see item above)
 
 Implemented (Domain/Infrastructure/Api/Mcp + 35 unit tests + 13 integration tests),
 `tpx verify auth` green (~11s). Not yet merged to `main`.
