@@ -17,6 +17,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "tpx hook block-generated"
+          },
+          {
+            "type": "command",
             "command": "rtk hook claude"
           }
         ]

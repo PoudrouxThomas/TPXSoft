@@ -19,7 +19,10 @@ internal static class Hooks
         {
             "block-generated" => BlockGenerated(),
             "verify-on-save" => VerifyOnSave(),
-            "stop-verify" => Commands.Dispatch(["verify", "--affected"]),
+            // Exit 2, not 1: Claude Code only *blocks* a Stop on exit 2, and only then feeds
+            // the hook's stderr back to the agent as the reason to keep working. Exit 1 is a
+            // non-blocking warning the agent never sees — which made this gate decorative.
+            "stop-verify" => Commands.Dispatch(["verify", "--affected"]) == 0 ? 0 : 2,
             var name => Unknown(name),
         };
     }
@@ -30,23 +33,60 @@ internal static class Hooks
         return 1;
     }
 
-    // PreToolUse (Edit/Write). Blocks edits under **/clients/** or **/generated/**.
+    // PreToolUse (Edit/Write/Bash). Blocks writes under shared/clients/** or **/generated/**.
     // Contract-first rule: change contracts/<module>.vN.yaml and run `tpx gen` instead.
     private static int BlockGenerated()
     {
-        var filePath = ReadFilePath();
-        if (string.IsNullOrEmpty(filePath))
+        var toolInput = ReadToolInput();
+        if (toolInput is null)
             return 0;
 
-        var normalized = filePath.Replace('\\', '/');
-        if (Regex.IsMatch(normalized, "(^|/)clients/") || Regex.IsMatch(normalized, "(^|/)generated/"))
-        {
-            Console.Error.WriteLine($"Blocked: '{filePath}' is generated. Edit the contract in contracts/ and run 'tpx gen' instead of hand-editing generated output.");
-            return 2;
-        }
+        // Edit/Write hand us the path directly.
+        var filePath = ReadString(toolInput.Value, "file_path");
+        if (!string.IsNullOrEmpty(filePath))
+            return IsGeneratedPath(filePath) ? Refuse(filePath) : 0;
 
-        return 0;
+        // Bash: the same write, laundered through a shell. Matching only Edit|Write left this
+        // guard bypassable by `sed -i`, `cp`, or a heredoc — and an agent told to prefer Bash
+        // bypasses it without ever intending to.
+        var command = ReadString(toolInput.Value, "command");
+        if (string.IsNullOrEmpty(command) || !MutatesFiles(command))
+            return 0;
+
+        // Deliberately biased toward blocking: a read piped to a file (`grep x
+        // shared/clients/y.cs > out`) trips this too. A false block costs one retry and the
+        // message says what to do; a false pass silently corrupts generated output.
+        var target = ShellTokens(command).FirstOrDefault(IsGeneratedPath);
+        return target is not null ? Refuse(target) : 0;
     }
+
+    private static int Refuse(string path)
+    {
+        Console.Error.WriteLine($"Blocked: '{path}' is generated. Edit the contract in contracts/ and run 'tpx gen' instead of hand-editing generated output.");
+        return 2;
+    }
+
+    private static bool IsGeneratedPath(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        return Regex.IsMatch(normalized, "(^|/)shared/clients/") || Regex.IsMatch(normalized, "(^|/)generated/");
+    }
+
+    // Anything that can create, overwrite, move or delete a file. Reads (cat, grep, head)
+    // deliberately absent — inspecting generated output is legitimate.
+    private static readonly string[] WriteIndicators =
+    [
+        ">", "tee", "sed -i", "sed --in-place", "cp ", "mv ", "rm ", "rmdir ",
+        "truncate", "dd ", "patch ", "touch ", "install ", "ln ", "chmod ",
+    ];
+
+    private static bool MutatesFiles(string command) =>
+        WriteIndicators.Any(indicator => command.Contains(indicator, StringComparison.Ordinal));
+
+    private static readonly char[] ShellSeparators = [' ', '\t', '\n', '\r', '>', '<', '|', ';', '&', '\'', '"', '(', ')', '='];
+
+    private static IEnumerable<string> ShellTokens(string command) =>
+        command.Split(ShellSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     // PostToolUse (Edit/Write). Fast per-file check: build the touched .NET project, or
     // type-check the touched Angular project. Direct dotnet/tsc calls on purpose -- this is
@@ -89,16 +129,28 @@ internal static class Hooks
 
     private static string? ReadFilePath()
     {
+        var toolInput = ReadToolInput();
+        return toolInput is null ? null : ReadString(toolInput.Value, "file_path");
+    }
+
+    // The hook payload arrives on stdin once per process, so this is read exactly once.
+    // Cloned out of the JsonDocument because the document is disposed on return.
+    private static JsonElement? ReadToolInput()
+    {
         var input = Console.In.ReadToEnd();
         if (string.IsNullOrWhiteSpace(input))
             return null;
 
         using var doc = JsonDocument.Parse(input);
         return doc.RootElement.TryGetProperty("tool_input", out var toolInput)
-            && toolInput.TryGetProperty("file_path", out var filePath)
-            ? filePath.GetString()
+            ? toolInput.Clone()
             : null;
     }
+
+    private static string? ReadString(JsonElement element, string property) =>
+        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     private static string? FindAncestor(string startPath, string pattern)
     {
