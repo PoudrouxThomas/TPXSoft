@@ -119,11 +119,6 @@ routines and subagents").
       confirmed this session: `claude plugin validate plugin/marketplace/plugins/tpxsoft`
       passes. `claude plugin eval` itself is early-access-gated on this account (not
       usable) — `validate` is the working gate, per PLAN.md §0.9.
-- [ ] Headless `claude -p` PR-review job in CI — **dropped by user decision**, not a
-      blocker to chase: it would run on a GitHub cloud runner needing its own paid
-      `ANTHROPIC_API_KEY` (no free tier), and the user declined the cost (PLAN.md §0.9).
-      `.github/workflows/auth.yml`/`documents.yml` exist now, so "no CI workflows exist"
-      is no longer the actual reason this is undone.
 
 ### 0.10 CLAUDE.md hierarchy (do after Phase 1's first module)
 
@@ -170,13 +165,17 @@ a specific, named blocker rather than being generically "not done" — see each 
       and `modules/documents/src/TPXSoft.Documents.Mcp/ContractTools.cs`) to also walk
       `apps/*/*/src/**`; re-run confirmed both fixture files now surface. `tpx verify
       auth` and `tpx verify documents` both green after the fix.
-- [ ] 8. A background `dotnet-implementer` run on a worktree produces a green
-      `tpx verify auth` and a PR via `gh` — **partially demonstrated**: `module-architect`,
-      `dotnet-implementer`, and `test-writer` all ran as background subagents in an
-      earlier session and each produced a green `tpx verify auth`, but none ran inside
-      an isolated worktree specifically, and no PR was opened by an agent directly.
-      `gh` is confirmed installed now, so that's no longer a blocker — the only gap is
-      an actual end-to-end run. Worth doing once there's a natural small follow-up task.
+- [x] 8. A background `dotnet-implementer` run on a worktree produces a green
+      `tpx verify auth` and a PR via `gh` — **fully confirmed this session**, isolated
+      worktree specifically: `tpx worktree new auth/me-created-at` created a real
+      worktree (`D:\Dev\AI\TPXSoft.worktrees\auth-me-created-at`, port 5433), a
+      background `dotnet-implementer` agent ran entirely inside it (contract edit
+      adding `createdAt` to `/auth/me`, `tpx gen`, API + test changes), reported
+      `tpx verify auth` green in 7.8s, then pushed the branch and opened
+      [PR #20](https://github.com/PoudrouxThomas/TPXSoft/pull/20) itself via `gh pr
+      create` — confirmed open with `gh pr view 20` (CI `auth` workflow running).
+      Integration tests skipped (no Docker daemon in this environment this run), noted
+      by the agent rather than silently omitted.
 - [x] 9. The Friday `/schedule` routine executes on demand and writes a review +
       `GOALS.md` progress summary — the routine (`trig_01Ab56gX37f3vCqfXA1nqqJD`,
       "TPXSoft Weekly Review", Fridays 16:00 UTC) exists, is enabled; user ran it and
@@ -189,9 +188,9 @@ a specific, named blocker rather than being generically "not done" — see each 
       plain `User` field)
 - [x] `contracts/auth.v1.yaml` exists and is the source of truth
 - [x] Auth MCP server built (becomes the template for `new-module`)
-- [ ] All Phase 0 verification items (above) pass using Auth as the guinea pig —
-      8 of 9 do; the remaining gap is a not-yet-run end-to-end worktree-to-PR
-      `dotnet-implementer` run (item 8; see item above)
+- [x] All Phase 0 verification items (above) pass using Auth as the guinea pig —
+      9 of 9 now confirmed; item 8's end-to-end worktree-to-PR `dotnet-implementer` run
+      completed this session (see item 8 above, PR #20)
 
 Implemented (Domain/Infrastructure/Api/Mcp + 35 unit tests + 13 integration tests),
 `tpx verify auth` green (~11s). Not yet merged to `main`.
