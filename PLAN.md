@@ -172,15 +172,33 @@ on the same machine will race, and whichever finishes last wins for both. Revisi
 
 **Still open — persistent .NET SDK provisioning.** The SessionStart hook above only builds
 `tpx` *if* `dotnet` is already on `PATH`; it does not install the SDK itself. A fresh cloud
-container still has no .NET SDK pre-installed. Working recipe, verified end to end in this
-session: `apt-get install -y dotnet-sdk-10.0`, plus `DOTNET_ROLL_FORWARD=Major` as an
+container still has no .NET SDK pre-installed.
+
+**Re-checked 2026-09-02 in a freshly created cloud environment — still not applied, and the
+old recipe was itself incomplete.** The environment's `DOTNET_ROLL_FORWARD=Major` env var
+*was* present at session start (confirming that half of the recipe was added to the
+environment config), but `dotnet` was not on `PATH` and no `dotnet-*` package was installed
+(`dpkg -l` empty, no `dotnet` line in `/var/log/apt/history.log`) — the MCP servers
+`tpxsoft-auth`/`tpxsoft-documents` both failed to connect with `ENOENT: dotnet`. Running the
+previously-recorded one-liner cold reproduced a second, separate bug: `apt-get install -y
+dotnet-sdk-10.0` failed with `404 Not Found` on several sub-packages from
+`security.ubuntu.com` (that mirror was serving a version, `10.0.4-0ubuntu1~24.04.1`, that no
+longer matched `archive.ubuntu.com noble-updates`'s `10.0.104-0ubuntu1~24.04.1` — a stale
+local package index, not a permissions or egress problem). Running `apt-get update` first
+fixed it — the install then succeeded end to end, and the rest of the chain (SessionStart
+hook → `tpx` global-tool install, NSwag install, Auth MCP server build) all ran clean once
+`dotnet` existed, so the SDK install is the *only* missing step.
+
+**Corrected working recipe, verified end to end in this session:**
+`apt-get update && apt-get install -y dotnet-sdk-10.0`, plus `DOTNET_ROLL_FORWARD=Major` as an
 environment variable (`builds.dotnet.microsoft.com`, where `dotnet-install.sh` fetches from,
 is *not* on the Trusted egress allowlist and 403s, while `dotnet.microsoft.com`/`nuget.org`
 resolve fine; Ubuntu 24.04 has no `dotnet-sdk-9.0` package but SDK 10 builds this `net9.0`
 tree and roll-forward runs the output). This belongs in the cloud environment's own setup
-script (claude.ai/code environment settings, not repo content) — until someone applies it
-there, every fresh cloud session needs the `apt-get install` run by hand once before the
-SessionStart hook has anything to build.
+script (claude.ai/code environment settings, not repo content) — until someone applies the
+corrected two-command form there, every fresh cloud session needs `apt-get update &&
+apt-get install -y dotnet-sdk-10.0` run by hand once before the SessionStart hook has
+anything to build.
 
 ### 0.6 Worktrees — done
 
