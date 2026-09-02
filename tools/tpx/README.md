@@ -12,9 +12,9 @@ Rather than every agent, hook, or skill knowing the details of `dotnet build`, `
 
 | Command | What it does |
 |---|---|
-| `tpx verify <module>` | Builds the module's solution, runs its unit tests, lints its contract. Target: under 60 seconds, so it can run in a tight agent loop. |
-| `tpx verify --affected` | Maps `git diff` (vs `main`) to modules and runs `verify` only on the ones that changed. |
-| `tpx verify boundaries` | Fails if a module's project file references another module's `.Domain`/`.Infrastructure` directly. Modules may only talk through a generated client or `Shared.Kernel`. |
+| `tpx verify <module>` | Checks module boundaries, builds the module's solution, runs its unit tests, lints its contract. Target: under 60 seconds, so it can run in a tight agent loop. |
+| `tpx verify --affected` | Maps changed paths to modules and runs `verify` only on the ones affected. Changes come from the working tree (tracked edits, staged or not, plus untracked files) *and* from commits made since the branch forked from `main`, so it works on `main` itself. `modules/<m>/**` and `contracts/<m>.vN.yaml` map to `<m>`; `shared/**` and `tools/tpx/**` are global and map to every module. |
+| `tpx verify boundaries` | Fails if a module's project file references another module's `.Domain`/`.Infrastructure` directly. Modules may only talk through a generated client or `Shared.Kernel`. Also runs as the first step of `tpx verify <module>`, so an agent's own definition of done includes it. |
 | `tpx test <module> --integration` | Runs integration tests against a real Postgres (via Testcontainers) instead of unit-test fakes. Slower, needs Docker, kept separate from `verify`. |
 | `tpx contract lint` | Validates every `contracts/*.yaml` is structurally sound, and flags a breaking change if a required field or endpoint was removed compared to `main`. |
 | `tpx gen` | Regenerates the C#/Angular API clients under `shared/clients/` from the contracts. Contracts are the source of truth; generated clients are never hand-edited. |
@@ -31,9 +31,9 @@ Rather than every agent, hook, or skill knowing the details of `dotnet build`, `
 - A session or skill runs `tpx worktree new <module>/<feature>` before starting parallel work.
 
 **Hooks** (PLAN.md §0.5 — wired in `.claude/settings.json`):
-- A **Stop hook** → `tpx verify --affected`, firing automatically at the end of every session regardless of whether the agent remembered to self-check.
+- A **Stop hook** → `tpx verify --affected`, firing automatically at the end of every session regardless of whether the agent remembered to self-check. It exits **2** on a red verify, which is what makes Claude Code block the stop and hand the failure back to the agent — exit 1 would only print a warning nobody acts on.
 - **PostToolUse hooks** on `.cs`/`.ts` edits → narrower, faster checks on just the touched project, catching a broken edit the moment it happens.
-- A **PreToolUse hook** blocks edits under `shared/clients/**` or `**/generated/**`, forcing contract-first discipline mechanically (the only legitimate way those files change is `tpx gen`).
+- A **PreToolUse hook** blocks writes under `shared/clients/**` or `**/generated/**`, forcing contract-first discipline mechanically (the only legitimate way those files change is `tpx gen`). It matches `Bash` as well as `Edit`/`Write`: a `sed -i` or a heredoc redirect is the same write, and matching only the file-editing tools left the guard trivially bypassable. Reads of generated files (`cat`, `grep`) still pass.
 
 The split matters: hooks are a backstop that fires no matter what the agent does, cost no extra tokens, and catch errors at the cheapest possible moment. Agents calling `tpx verify` themselves is the fast inner loop — check, fix, check again — before ever reaching that backstop.
 

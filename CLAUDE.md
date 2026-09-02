@@ -10,7 +10,9 @@ Phase 1 (Auth module) is built: root `TPXSoft.sln`, `contracts/auth.v1.yaml`, an
 
 `plugin/marketplace/` bundles `.claude/agents` + `.claude/skills` + hooks into a `tpxsoft` plugin, served from a local-only marketplace (PLAN §0.9, no remote repo, by user decision). `claude plugin validate plugin/marketplace/plugins/tpxsoft` passes; install/uninstall via `/plugin marketplace add ./plugin/marketplace` + `/plugin install tpxsoft@tpxsoft-marketplace` verified working, then removed again. `claude plugin eval` is early-access-gated on this account, not usable. The headless `claude -p` PR-review CI job from PLAN §0.9 was **not built** — it would run on a GitHub cloud runner needing its own paid `ANTHROPIC_API_KEY`, user declined the cost.
 
-Still missing: `shared/` (Shared.Kernel, generated clients) and any second module — nothing to wire yet, since Auth has no consumers. Next step: Documents module (Phase 2) or hardening Auth further, per `GOALS.md`.
+Phase 2 (Documents module) is built: `modules/documents/` (Domain, Api, Infrastructure, Mcp, tests, its own `.sln`), `contracts/documents.v1.yaml`, MCP server registered as `tpxsoft-documents`. All 7 planned features done, `tpx verify documents` green. Aspire orchestration and cross-module wiring (contract-guardian-verified) are the remaining Phase 2 items.
+
+Phase 3 (Sharepoint-lite) is in progress: `apps/sharepoint/web` (Angular) has login/register/home plus a Documents-backed file explorer, both wired through generated clients (`@tpxsoft/auth-client`, `@tpxsoft/documents-client`) with env-based API config (`apps/sharepoint/web/src/environments/`) rather than hardcoded URLs. Login verified working end-to-end against a real `docker compose up -d` stack. `apps/sharepoint/api` does not exist yet — next step for Phase 3. See `GOALS.md` for full acceptance-criteria detail.
 
 [PLAN.md](PLAN.md) is the shared reference for the project and takes precedence over this file where they disagree. Update PLAN.md whenever a decision changes.
 

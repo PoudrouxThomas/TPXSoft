@@ -53,6 +53,13 @@ internal static class Commands
 
         var stopwatch = Stopwatch.StartNew();
 
+        // Boundaries first: it's a file scan, it costs nothing, and it's the check an agent
+        // is most likely to violate. It used to live only in `tpx verify boundaries` and CI,
+        // which meant an agent's own definition of done excluded it.
+        Console.WriteLine($"tpx verify {module}: boundaries");
+        if (VerifyBoundaries() != 0)
+            return 1;
+
         Console.WriteLine($"tpx verify {module}: dotnet build");
         if (Shell.Run("dotnet", $"build \"{sln}\" -warnaserror") != 0)
             return 1;
@@ -81,39 +88,118 @@ internal static class Commands
 
     private static int VerifyAffected()
     {
-        var (exitCode, output) = Shell.Capture("git", "diff --name-only main...HEAD");
-        if (exitCode != 0)
-            (exitCode, output) = Shell.Capture("git", "diff --name-only main");
-
-        if (exitCode != 0)
+        var changedPaths = ChangedPaths(out var error);
+        if (error is not null)
         {
-            Console.Error.WriteLine("tpx verify --affected: 'git diff' against main failed — is there a main branch to diff against?");
+            Console.Error.WriteLine($"tpx verify --affected: {error}");
             return 1;
         }
 
-        var affectedModules = output
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(path => path.Replace('\\', '/'))
-            .Where(path => path.StartsWith("modules/", StringComparison.Ordinal))
-            .Select(path => path.Split('/')[1])
-            .Distinct()
-            .ToList();
+        if (changedPaths.Count == 0)
+        {
+            Console.WriteLine("tpx verify --affected: no changed files — nothing to verify");
+            return 0;
+        }
 
+        var affectedModules = AffectedModules(changedPaths);
         if (affectedModules.Count == 0)
         {
-            Console.WriteLine("tpx verify --affected: no changed files under modules/ — nothing to verify");
+            Console.WriteLine("tpx verify --affected: no changed file maps to a module — nothing to verify");
             return 0;
         }
 
         foreach (var module in affectedModules)
         {
-            Console.WriteLine($"tpx verify --affected: '{module}' changed");
-            var result = VerifyModule(module);
-            if (result != 0)
-                return result;
+            Console.WriteLine($"tpx verify --affected: '{module}' affected");
+            if (VerifyModule(module) != 0)
+            {
+                // On stderr on purpose: the Stop hook exits 2 on failure, and Claude Code
+                // feeds a blocking hook's stderr back to the agent as the reason. dotnet's
+                // own diagnostics go to the inherited stdout, so without this line the agent
+                // would be told to keep working with no indication of what broke.
+                Console.Error.WriteLine($"tpx verify --affected: '{module}' is RED — fix it before finishing.");
+                return 1;
+            }
         }
 
         return 0;
+    }
+
+    // Every source of "what changed" this has to react to. `main...HEAD` alone is empty when
+    // HEAD *is* main, which silently disarmed the Stop gate on the mainline branch.
+    private static List<string> ChangedPaths(out string? error)
+    {
+        error = null;
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Tracked edits, staged or not, against HEAD. Works on any branch, main included.
+        var (headExitCode, headOutput) = Shell.Capture("git", "diff --name-only HEAD");
+        if (headExitCode != 0)
+        {
+            error = "'git diff --name-only HEAD' failed — is this a git repo with at least one commit?";
+            return [];
+        }
+
+        AddPaths(paths, headOutput);
+
+        // Untracked files: a brand new handler or contract is a change too.
+        var (untrackedExitCode, untrackedOutput) = Shell.Capture("git", "ls-files --others --exclude-standard");
+        if (untrackedExitCode == 0)
+            AddPaths(paths, untrackedOutput);
+
+        // Commits already made on a feature branch since it forked from main. Missing on main
+        // itself and in a repo with no main branch — both non-fatal, the sources above stand.
+        var (branchExitCode, branchOutput) = Shell.Capture("git", "diff --name-only main...HEAD");
+        if (branchExitCode == 0)
+            AddPaths(paths, branchOutput);
+
+        return [.. paths];
+    }
+
+    private static void AddPaths(HashSet<string> paths, string gitOutput)
+    {
+        foreach (var line in gitOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            paths.Add(line.Replace('\\', '/'));
+    }
+
+    // Maps a changed path to the modules it can break. `modules/<m>/**` is direct;
+    // `contracts/<m>.vN.yaml` is the source of truth <m> is generated from, so a contract
+    // edit that verified nothing was backwards in a contract-first repo; `shared/**` and
+    // `tools/tpx/**` are global — they can break any module, so all of them get verified.
+    private static List<string> AffectedModules(IEnumerable<string> changedPaths)
+    {
+        var knownModules = Modules.ListModules().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var affected = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in changedPaths)
+        {
+            if (path.StartsWith("shared/", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("tools/tpx/", StringComparison.OrdinalIgnoreCase))
+            {
+                affected.UnionWith(knownModules);
+                continue;
+            }
+
+            if (path.StartsWith("modules/", StringComparison.OrdinalIgnoreCase))
+            {
+                var segments = path.Split('/');
+                if (segments.Length > 1 && knownModules.Contains(segments[1]))
+                    affected.Add(segments[1]);
+                continue;
+            }
+
+            if (path.StartsWith("contracts/", StringComparison.OrdinalIgnoreCase))
+            {
+                // contracts/auth.v1.yaml -> auth
+                var fileName = Path.GetFileName(path);
+                var versionIndex = fileName.IndexOf(".v", StringComparison.OrdinalIgnoreCase);
+                var module = versionIndex > 0 ? fileName[..versionIndex] : Path.GetFileNameWithoutExtension(fileName);
+                if (knownModules.Contains(module))
+                    affected.Add(module);
+            }
+        }
+
+        return [.. affected];
     }
 
     private static int VerifyBoundaries()
@@ -200,8 +286,8 @@ internal static class Commands
             tpx — TPXSoft verification loop CLI
 
             Usage:
-              tpx verify <module>              build + unit tests + contract lint for one module
-              tpx verify --affected            map git diff (vs main) to modules, verify each
+              tpx verify <module>              boundaries + build + unit tests + contract lint for one module
+              tpx verify --affected            map working tree + branch changes to modules, verify each
               tpx verify boundaries             fail if a module references another module's .Domain/.Infrastructure
               tpx test <module> --integration  Testcontainers integration tests against real Postgres
               tpx contract lint                validate every contracts/*.yaml + breaking-change diff vs main
