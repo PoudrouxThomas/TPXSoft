@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/ng-openapi-gen/ng-openapi-gen-schema.json",
+  "input": "__SPEC__",
+  "output": "__GENERATED__",
+  "ignoreUnusedModels": false,
+  "indexFile": true
+}

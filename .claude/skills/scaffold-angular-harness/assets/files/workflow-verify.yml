@@ -1,0 +1,25 @@
+name: verify
+
+# CI runs the same command the agent runs locally, plus the two things deliberately
+# kept out of the inner loop: the production build and e2e. Nothing here checks
+# something local verify does not -- otherwise "green locally" stops meaning anything.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci # never npm install -- the lock file is the contract
+      - run: npm run verify
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
