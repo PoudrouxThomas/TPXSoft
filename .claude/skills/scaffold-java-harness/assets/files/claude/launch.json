@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "__ARTIFACT__",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["dev", "run"],
+      "port": __PORT__,
+      "url": "http://localhost:__PORT__"
+    }
+  ]
+}

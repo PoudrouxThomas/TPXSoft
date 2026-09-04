@@ -1,0 +1,50 @@
+{
+  "skill_name": "scaffold-java-harness",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I am starting a new internal service at work, a Java REST API for managing purchase orders. Base package com.northwind.orders, Postgres behind it. Set the repo up properly for working with Claude - I want to be able to trust it not to leave the build red. The Angular team will generate their client from our OpenAPI spec.",
+      "expected_output": "A scaffolded Spring Boot project with ./dev verify green under 60s, hooks wired in .claude/settings.json (PreToolUse on Edit+Bash, PostToolUse, Stop exiting 2), ArchUnit rules, Spotless+Checkstyle+ErrorProne, docs/openapi.json produced by ./dev openapi, CLAUDE.md under 2KB, CI running ./dev verify. HookSelfTest run and passing.",
+      "files": [],
+      "assertions": [
+        "A single entry point script `dev` exists and `./dev verify` exits 0 on the fresh scaffold",
+        "`./dev verify` prints fewer than 15 lines on success and completes in under 60 seconds on a warm build",
+        ".claude/settings.json wires PreToolUse on both an Edit-family matcher and Bash, PostToolUse, and Stop",
+        "The Stop hook exits 2 (not 1) when verify fails",
+        "An ArchUnit test file exists with at least five rules including layer direction and no field injection",
+        "The build enforces -Werror and runs a formatter check and Checkstyle inside verify",
+        "Integration tests are tagged so they do not run in ./dev verify",
+        "The OpenAPI document is produced by a repo command and a test fails when the committed copy is stale",
+        "CLAUDE.md exists and is under 2048 bytes",
+        "The write guard was actually executed (self-test run), not merely installed"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We have an existing Spring Boot 3 monolith (Maven, ~40k lines, package com.acme.billing). Claude keeps breaking our layering - controllers calling repositories directly - and it says it is done when the build is red. Can you put guardrails in without turning the whole codebase upside down?",
+      "expected_output": "Harness-only install: dev script, hooks, ArchUnit test, checkstyle config, CLAUDE.harness.md, CI. Build-file additions staged in the right order (format first, -Werror last) rather than all at once. Existing pom.xml not clobbered. Architecture rules adapted to the repo's real packages, and at least one rule proven to fail.",
+      "files": [],
+      "assertions": [
+        "The existing pom.xml / build file is not overwritten wholesale",
+        "An ArchUnit rule specifically forbids controllers depending on repositories",
+        "At least one architecture rule was proven to fail on a deliberately bad file, then reverted",
+        "The Stop hook is wired and blocks on a red verify",
+        "The response tells the user the order to adopt the checks in, rather than enabling everything at once",
+        "No claim that verify is green unless it was actually run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Set up a Java API scaffold for a small side project - no database, just in-memory for now. I mostly care that an agent cannot hand-edit the generated API client and cannot finish a task with failing tests. Java 21, Gradle.",
+      "expected_output": "Scaffold with --db none (in-memory repository behind the domain port), Gradle build, hooks installed and the write guard proven with the self-test including Bash bypasses (sed -i, heredoc, tee, rm -rf), Stop hook proven to exit 2.",
+      "files": [],
+      "assertions": [
+        "No JPA, Flyway or Testcontainers dependencies are present when the user asked for no database",
+        "The repository port still exists with an in-memory adapter, so the layering rules still apply",
+        "The write guard blocks Bash writes (sed -i, heredoc redirect, tee) and not only Edit/Write",
+        "The self-test was executed and all cases pass",
+        "The Stop hook was demonstrated to exit 2 on a red tree"
+      ]
+    }
+  ]
+}

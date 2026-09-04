@@ -1,0 +1,13 @@
+# Dependency updates as pull requests. Free, and it keeps the security story boring:
+# no scanner to install, no key to rotate, no curl-pipe-sh in the build.
+version: 2
+updates:
+  - package-ecosystem: "__ECOSYSTEM__"
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: weekly

@@ -1,0 +1,32 @@
+name: verify
+
+# CI runs the same command a developer and an agent run, and nothing else. The moment CI
+# checks something local verify does not, a failure here cannot be reproduced locally and
+# everybody burns time guessing at it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "__JAVA__"
+          distribution: temurin
+__CACHE_STEP__
+      - name: verify
+        run: ./dev verify
+
+      - name: integration tests
+        run: ./dev verify-it
+
+      - name: publish the API document
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: docs/openapi.json
+          if-no-files-found: error
