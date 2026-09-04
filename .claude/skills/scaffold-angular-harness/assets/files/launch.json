@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "__APP_NAME__",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": __PORT__
+    }
+  ]
+}

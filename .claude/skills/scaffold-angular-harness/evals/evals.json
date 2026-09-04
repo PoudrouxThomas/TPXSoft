@@ -1,0 +1,83 @@
+{
+  "skill_name": "scaffold-angular-harness",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "eval-0-new-app",
+      "prompt": "I'm kicking off a new Angular app for our internal invoicing tool. There's no backend yet - the team will build one later. Set the repo up properly for working with Claude: I want one command I can trust, linting, and guard rails so an agent can't quietly break the architecture or finish with a broken build.",
+      "expected_output": "A new Angular workspace with a fast quiet npm run verify, strict tsconfig, eslint import boundaries, Claude hooks (Stop blocking on exit 2), launch.json and a sub-2KB CLAUDE.md.",
+      "assertions": [
+        "package.json defines a single `verify` script",
+        "`npm run verify` exits 0 on the delivered repo",
+        "verify finishes in under 60 seconds",
+        "a green verify prints 15 lines of output or fewer",
+        "verify chains format, lint, type check and unit tests",
+        "tsconfig enables strict and strictTemplates",
+        "verify catches a type error inside an Angular template",
+        "a cross-feature import fails verify (architecture is enforced)",
+        "a Stop hook is registered",
+        "the Stop hook exits 2 (blocking) when the tree is red",
+        "CLAUDE.md exists and is under 2 KB",
+        "CLAUDE.md names the verify command",
+        ".claude/launch.json lets the agent start the dev server itself"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "eval_name": "eval-1-openapi-backend",
+      "prompt": "This is our Angular frontend. The backend team publishes the OpenAPI spec and I have committed a copy at contracts/api.yaml. Get the repo agent-ready: a fast verify loop, lint, architecture rules - and I really do not want an agent hand-writing HTTP calls or editing the generated client. There is already a hand-written auth service in there that keeps drifting from the API.",
+      "expected_output": "Everything in eval 0, plus a generated client from contracts/api.yaml behind one regeneration command, and a PreToolUse guard that blocks writes to it through Edit/Write AND through Bash.",
+      "assertions": [
+        "package.json defines a single `verify` script",
+        "`npm run verify` exits 0 on the delivered repo",
+        "verify finishes in under 60 seconds",
+        "a green verify prints 15 lines of output or fewer",
+        "verify chains format, lint, type check and unit tests",
+        "tsconfig enables strict and strictTemplates",
+        "verify catches a type error inside an Angular template",
+        "a cross-feature import fails verify (architecture is enforced)",
+        "a Stop hook is registered",
+        "the Stop hook exits 2 (blocking) when the tree is red",
+        "CLAUDE.md exists and is under 2 KB",
+        "CLAUDE.md names the verify command",
+        ".claude/launch.json lets the agent start the dev server itself",
+        "one command regenerates the API client from the spec",
+        "a generated client exists in the repo",
+        "a PreToolUse hook blocks Edit/Write into the generated client",
+        "the same guard blocks a Bash `sed -i` into the generated client"
+      ],
+      "files": [
+        "contracts/api.yaml",
+        "src/app/services/auth.service.ts"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "eval-2-messy-existing",
+      "prompt": "Our Angular repo has no eslint, no CLAUDE.md, and nothing stops Claude from wrapping up with a broken build. Make it agent-ready and get it actually green - the codebase is a bit sloppy, I would rather fix the code than turn the checks off.",
+      "expected_output": "Everything in eval 0, and the two seeded defects (implicit any in orders.service.ts, cross-feature billing -> orders import) fixed in the code rather than by weakening strict or the boundary rule.",
+      "assertions": [
+        "package.json defines a single `verify` script",
+        "`npm run verify` exits 0 on the delivered repo",
+        "verify finishes in under 60 seconds",
+        "a green verify prints 15 lines of output or fewer",
+        "verify chains format, lint, type check and unit tests",
+        "tsconfig enables strict and strictTemplates",
+        "verify catches a type error inside an Angular template",
+        "a cross-feature import fails verify (architecture is enforced)",
+        "a Stop hook is registered",
+        "the Stop hook exits 2 (blocking) when the tree is red",
+        "CLAUDE.md exists and is under 2 KB",
+        "CLAUDE.md names the verify command",
+        ".claude/launch.json lets the agent start the dev server itself",
+        "the implicit-any in orders.service.ts was typed rather than silenced",
+        "the cross-feature billing -> orders import was resolved, not left in place"
+      ],
+      "files": [
+        "src/app/features/orders/orders.service.ts",
+        "src/app/features/billing/billing.service.ts"
+      ]
+    }
+  ]
+}
