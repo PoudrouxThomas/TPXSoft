@@ -1,0 +1,6 @@
+# Paths that must not be hand-edited, one prefix per line.
+# The generator owns them; an edit here is erased by the next run and hides real drift meanwhile.
+# Any path segment named "generated" is protected whether it is listed here or not.
+docs/openapi.json
+build/generated
+target/generated-sources

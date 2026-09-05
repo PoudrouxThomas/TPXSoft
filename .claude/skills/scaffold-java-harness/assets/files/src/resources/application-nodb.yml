@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: __ARTIFACT__
+
+server:
+  port: __PORT__
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+# No default credential on purpose: unset means a random one-run password, never a
+# known one that quietly survives into an environment that matters.
+app:
+  security:
+    api-user: ${API_USER:api}
+    api-password: ${API_PASSWORD:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

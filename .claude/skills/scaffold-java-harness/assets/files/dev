@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# The one entry point. Hooks, CI, agents and humans call this script and never
+# `gradle` / `mvn` directly -- that indirection is what keeps the build tool
+# swappable and keeps everyone's definition of "green" identical.
+#
+# Contract:
+#   - verify stops at the first failing check
+#   - one summary line on success
+#   - on failure, only the failing check's output, capped
+#   - exit 0 green, exit 1 red
+set -uo pipefail
+cd "$(dirname "$0")" || exit 1
+
+MAX_LINES=40
+export NO_COLOR=1
+export CI="${CI:-true}"
+
+if [ -f "settings.gradle.kts" ] || [ -f "settings.gradle" ]; then
+  BUILD=gradle
+  if [ -x "./gradlew" ]; then G="./gradlew"; elif [ -f "./gradlew" ]; then G="sh ./gradlew"; else G="gradle"; fi
+  G="$G -q --console=plain"
+elif [ -f "pom.xml" ]; then
+  BUILD=maven
+  # mvnd is a drop-in mvn that keeps a warm JVM. Maven has no daemon and no build cache, so
+  # startup is a real slice of every run; when mvnd is installed, take it.
+  if command -v mvnd >/dev/null 2>&1; then M="mvnd"
+  elif [ -x "./mvnw" ]; then M="./mvnw"
+  elif [ -f "./mvnw" ]; then M="sh ./mvnw"
+  else M="mvn"; fi
+  M="$M -B -q"
+  # Offline keeps the inner loop off the network, but only once ~/.m2 is warm -- on a fresh
+  # machine it turns the first run into a resolution error, so it is opt-in.
+  [ "${MAVEN_OFFLINE:-0}" = "1" ] && M="$M -o"
+else
+  echo "dev: no settings.gradle.kts and no pom.xml here" >&2; exit 1
+fi
+
+usage() {
+  cat <<'USAGE'
+./dev verify [format|lint|compile|test]   the loop: format, lint, compile, unit + architecture tests
+./dev format                              rewrite sources with the formatter
+./dev compile                             compile main+test only (fast, used by the save hook)
+./dev test [pattern]                      unit tests, optionally filtered
+./dev verify-it                           integration tests (Testcontainers) -- slow, on demand
+./dev openapi                             regenerate docs/openapi.json from the running app
+./dev run                                 start the app
+./dev clean                               drop build output
+USAGE
+}
+
+# Turns the Checkstyle XML report into file:line rule lines. The build tool only prints a
+# path to an HTML report, which is worth nothing to an agent, a hook or a CI log.
+checkstyle_details() {
+  local report
+  for report in build/reports/checkstyle/*.xml target/checkstyle-result.xml; do
+    [ -f "$report" ] || continue
+    sed -n 's|<file name="\([^"]*\)">|FILE \1|p; s|.*<error line="\([0-9]*\)"[^>]*severity="\([a-z]*\)"[^>]*message="\([^"]*\)"[^>]*source="[^"]*\.\([A-Za-z]*\)Check".*|  \1 [\4] \3|p' "$report" \
+      | awk '/^FILE /{f=$2; next} {print f ":" $0}' \
+      | sed -e 's|.*[/\\]src[/\\]|src/|' -e 's|\\|/|g' \
+      -e "s|&apos;|'|g" -e 's|&quot;|"|g' -e 's|&lt;|<|g' -e 's|&gt;|>|g' -e 's|&amp;|\&|g' \
+      | head -n 20 >&2
+  done
+}
+
+# Runs a command quietly; on failure prints the interesting slice of its output.
+# Build tools narrate at length and every line lands in an agent's context on every
+# run, so the default is silence and the exception is the first real error.
+run_step() {
+  local id="$1"; shift
+  local start out code secs slice total
+  start=$(date +%s)
+  out=$("$@" 2>&1); code=$?
+  secs=$(( $(date +%s) - start ))
+  if [ $code -ne 0 ]; then
+    echo "verify FAILED: $id (exit $code, ${secs}s)" >&2
+    # Start at the first line that looks like a real failure, not at the banner.
+    slice=$(printf '%s\n' "$out" | grep -v '^[[:space:]]*$' | awk '/^> Task .* FAILED|^\* What went wrong|error:|\[ERROR\]|FAILED/{f=1} f')
+    [ -z "$slice" ] && slice=$(printf '%s\n' "$out" | grep -v '^[[:space:]]*$')
+    # Drop the build tool closing boilerplate: --stacktrace, --scan, help links.
+    slice=$(printf '%s\n' "$slice" | sed '/^\* Try:/,$d' | sed '/^\[ERROR\] For more information/,$d')
+    # Drop Java stack frames. The exception line says what broke; forty frames of
+    # formatter internals say only that the formatter is written in Java.
+    slice=$(printf '%s\n' "$slice" | grep -v '^[[:space:]]*at [A-Za-z0-9_.$]*[.(]')
+    printf '%s\n' "$slice" | head -n "$MAX_LINES" >&2
+    total=$(printf '%s\n' "$slice" | wc -l | tr -d ' ')
+    [ "$total" -gt "$MAX_LINES" ] && echo "... $(( total - MAX_LINES )) more lines suppressed" >&2
+    printf '%s\n' "$slice" | grep -qi 'spotless\|format violation' && echo "fix: ./dev format" >&2
+    # Checkstyle points at an HTML report, which is useless to anything without a browser.
+    printf '%s\n' "$slice" | grep -qi 'checkstyle' && checkstyle_details
+    return 1
+  fi
+  STEP_TIMES="${STEP_TIMES}${id} ${secs}s  "
+  return 0
+}
+
+# One build-tool invocation per verify: a warm daemon still costs about a second of
+# startup per call, and four calls is a real slice of a 60s budget spent on nothing.
+gradle_tasks() {
+  case "${1:-all}" in
+    format)  echo "spotlessCheck" ;;
+    lint)    echo "checkstyleMain checkstyleTest" ;;
+    compile) echo "compileJava compileTestJava" ;;
+    test)    echo "test" ;;
+    *)       echo "spotlessCheck checkstyleMain checkstyleTest test" ;;
+  esac
+}
+maven_goals() {
+  case "${1:-all}" in
+    format)  echo "spotless:check" ;;
+    lint)    echo "checkstyle:check" ;;
+    compile) echo "test-compile" ;;
+    test)    echo "test" ;;
+    *)       echo "spotless:check checkstyle:check test" ;;
+  esac
+}
+
+cmd_verify() {
+  local what="${1:-all}" t0
+  STEP_TIMES=""
+  t0=$(date +%s)
+  if [ "$BUILD" = gradle ]; then
+    # shellcheck disable=SC2086
+    run_step "$what" $G $(gradle_tasks "$what") || exit 1
+  else
+    # shellcheck disable=SC2086
+    run_step "$what" $M $(maven_goals "$what") -DskipITs || exit 1
+  fi
+  echo "verify ok  ${STEP_TIMES}total $(( $(date +%s) - t0 ))s"
+}
+
+case "${1:-verify}" in
+  verify)
+    shift || true
+    cmd_verify "${1:-all}"
+    ;;
+  compile)
+    STEP_TIMES=""
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then run_step compile $G compileJava compileTestJava || exit 1
+    else run_step compile $M test-compile || exit 1; fi
+    echo "compile ok  ${STEP_TIMES}"
+    ;;
+  format)
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then $G spotlessApply; else $M spotless:apply; fi
+    echo "formatted"
+    ;;
+  test)
+    shift || true
+    filter="${1:-}"
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then
+      if [ -n "$filter" ]; then $G test --tests "*$filter*"; else $G test; fi
+    else
+      if [ -n "$filter" ]; then $M test -Dtest="*$filter*"; else $M test; fi
+    fi
+    ;;
+  verify-it)
+    # Deliberately outside the inner loop: this one starts containers.
+    STEP_TIMES=""
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then run_step integration $G integrationTest || exit 1
+    else run_step integration $M verify -DskipUTs || exit 1; fi
+    echo "integration ok  ${STEP_TIMES}"
+    ;;
+  openapi)
+    # Boots the app once and writes docs/openapi.json -- the file a frontend generates
+    # its client from. CI runs the same test without the write flag, so a contract
+    # change nobody regenerated fails the build instead of drifting quietly.
+    STEP_TIMES=""
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then
+      run_step openapi $G integrationTest --tests "*OpenApiDocIT*" -Dopenapi.write=true || exit 1
+    else
+      run_step openapi $M verify -DskipUTs -Dit.test=OpenApiDocIT -Dopenapi.write=true || exit 1
+    fi
+    echo "wrote docs/openapi.json"
+    ;;
+  run)
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then $G bootRun; else $M spring-boot:run; fi
+    ;;
+  clean)
+    # shellcheck disable=SC2086
+    if [ "$BUILD" = gradle ]; then $G clean; else $M clean; fi
+    ;;
+  -h|--help|help) usage ;;
+  *) echo "dev: unknown command '$1'" >&2; usage >&2; exit 1 ;;
+esac

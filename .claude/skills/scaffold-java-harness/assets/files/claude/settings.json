@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "java tools/harness/HookGuard.java block-generated" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "java tools/harness/HookGuard.java block-generated" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "java tools/harness/HookGuard.java verify-on-save" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "java tools/harness/HookGuard.java stop-verify" }]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./dev verify)",
+      "Bash(./dev verify:*)",
+      "Bash(./dev compile)",
+      "Bash(./dev format)",
+      "Bash(./dev test:*)",
+      "Bash(./dev openapi)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./build/**)",
+      "Read(./target/**)",
+      "Read(./.gradle/**)",
+      "Read(./gradle/wrapper/**)"
+    ]
+  }
+}
