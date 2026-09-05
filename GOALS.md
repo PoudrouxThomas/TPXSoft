@@ -22,7 +22,9 @@ maintenance routine (PLAN.md §0.8) — see that section for how it should evolv
       session's container had neither `dotnet` nor `oasdiff` preinstalled: recovered via
       `apt-get install -y dotnet-sdk-10.0` (only .NET 8/10 are packaged for Ubuntu
       24.04, no 9.0 — the tree targets `net9.0`, so every `tpx`/`dotnet` invocation needs
-      `DOTNET_ROLL_FORWARD=LatestMajor` in env) and by fetching the `oasdiff` release
+      `DOTNET_ROLL_FORWARD=Major` in env — corrected here from a prior `LatestMajor` typo
+      that disagreed with `.claude/hooks/session-start.sh` and every other mention in this
+      file; `Major` is what the hook actually exports) and by fetching the `oasdiff` release
       binary directly from `github.com/oasdiff/oasdiff` (its `/latest/download/` alias
       404s — GitHub redirects aren't followed through this environment's egress proxy —
       but a pinned `/releases/download/vX.Y.Z/...` URL works). Confirms PLAN.md §0.5's
@@ -171,6 +173,12 @@ a specific, named blocker rather than being generically "not done" — see each 
       and `modules/documents/src/TPXSoft.Documents.Mcp/ContractTools.cs`) to also walk
       `apps/*/*/src/**`; re-run confirmed both fixture files now surface. `tpx verify
       auth` and `tpx verify documents` both green after the fix.
+      **Known gap found in this week's review (not yet fixed):** the walk is
+      `apps/*/*/src/**` only, still missing `apps/*/*/e2e/**` — `role: 'Admin'` in
+      `apps/sharepoint/web/e2e/tests/register.spec.ts` and
+      `apps/sharepoint/web/e2e/tests/support/mock-documents.ts` are real consumers of
+      `User.role` that `find_consumers("role")` still won't surface, reproducing the
+      same false-negative class this fix addressed for `src/**`, one directory over.
 - [x] 8. A background `dotnet-implementer` run on a worktree produces a green
       `tpx verify auth` and a PR via `gh` — **fully confirmed this session**, isolated
       worktree specifically: `tpx worktree new auth/me-created-at` created a real
@@ -245,9 +253,12 @@ Aspire orchestration and cross-module wiring are the remaining Phase 2 items.
       --configuration development` and `--configuration production` both build clean;
       grepping the dev bundle confirmed `localhost:5081`/`localhost:5082` baked in.
       Separately found (pre-existing, unrelated to this fix, not fixed here):
-      `npx ng test sharepoint-web` fails to compile — `auth.service.spec.ts` and
-      `file-explorer.spec.ts` build `User` fixtures missing the `createdAt` field added
-      in PR #20 — flagged as its own follow-up task.
+      `npx ng test sharepoint-web` still fails to compile — `auth.service.spec.ts`'s
+      `testUser: User` literal (line 11) is missing the `createdAt` field added to the
+      generated `User` interface in PR #20 (`shared/clients/angular/src/models/user.ts`
+      declares it required, non-optional). Re-verified this session:
+      `file-explorer.spec.ts`'s fixture was fixed since and now includes `createdAt`,
+      but `auth.service.spec.ts` was not — still an open follow-up task.
 
       **Live end-to-end login confirmed working** in a follow-up session: user ran
       `docker compose up -d` and hit a real CORS failure on `OPTIONS /auth/login`. Root
