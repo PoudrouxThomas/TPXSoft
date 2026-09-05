@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "__NAME_LOWER__-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "src/__NAME__.Api",
+        "--urls",
+        "http://localhost:__PORT__"
+      ],
+      "port": __PORT__,
+      "url": "http://localhost:__PORT__"
+    }
+  ]
+}

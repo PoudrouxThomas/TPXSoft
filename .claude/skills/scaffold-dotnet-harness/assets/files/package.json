@@ -1,0 +1,22 @@
+{
+  "name": "__NAME_LOWER__-harness",
+  "private": true,
+  "description": "Harness scripts for the __NAME__ API. Node runs the harness only; the API is .NET.",
+  "scripts": {
+    "verify": "node tools/harness/verify.mjs",
+    "verify:it": "node tools/harness/verify.mjs integration",
+    "format": "dotnet format __VERIFY_SOLUTION__",
+    "openapi:accept": "node tools/harness/openapi.mjs accept",
+    "hooks:selftest": "node tools/harness/hooks-selftest.mjs"
+  },
+  "harness": {
+    "solution": "__SOLUTION__",
+    "verifySolution": "__VERIFY_SOLUTION__",
+    "configuration": "Debug",
+    "protectedPaths": ["contracts/openapi.json", "artifacts"],
+    "openapi": {
+      "emitted": "artifacts/openapi/openapi.json",
+      "committed": "contracts/openapi.json"
+    }
+  }
+}

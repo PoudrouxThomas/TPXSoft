@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    Applies to every project in the repo. TreatWarningsAsErrors + Nullable is the
+    highest-value pair here: it stops "I'll clean that up later", which agents say and
+    never do, and nullable warnings catch a class of bug before a test exists.
+  -->
+  <PropertyGroup>
+    <TargetFramework>__TFM__</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1848;CA2007</NoWarn>
+  </PropertyGroup>
+
+</Project>
