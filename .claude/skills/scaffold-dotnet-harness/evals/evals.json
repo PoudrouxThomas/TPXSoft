@@ -1,0 +1,26 @@
+{
+  "skill_name": "scaffold-dotnet-harness",
+  "evals": [
+    {
+      "id": 0,
+      "name": "new-api-with-frontend-consumer",
+      "prompt": "I'm starting a new internal service at work, a .NET API for tracking equipment loans. The folder is empty. Set it up properly so Claude can work in it without breaking things - and our Angular frontend team needs to generate their client from it, so the OpenAPI side has to be solid.",
+      "expected_output": "A scaffolded .NET 9+ API (Domain/Infrastructure/Api + unit and integration test projects), a green sub-60s verify, hooks wired and self-tested, contracts/openapi.json committed with operationIds, CLAUDE.md under 2KB.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "existing-api-harness-only",
+      "prompt": "We have an existing ASP.NET Core 9 API in src/Billing.Api. No tests, no analyzers, nobody has touched the tooling in a year. Can you add a verify command and hooks so an agent can't declare a task done with a broken build?",
+      "expected_output": "Harness installed without scaffolding sample code over the existing project: verify script, Directory.Build.props, hooks with Stop exiting 2, CI. Should report honestly that there is no test project and what that means for the gate.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "single-piece-architecture-tests",
+      "prompt": "Set up architecture tests for my .NET API so that nothing outside the Infrastructure project can reference EF Core, and make sure they run as part of the normal check rather than only in CI.",
+      "expected_output": "NetArchTest rules living in the unit test project, picked up by the standard verify command, and demonstrated to actually fail on a deliberate violation.",
+      "files": []
+    }
+  ]
+}

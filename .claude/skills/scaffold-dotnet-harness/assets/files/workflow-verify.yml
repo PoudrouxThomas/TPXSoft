@@ -1,0 +1,36 @@
+name: verify
+
+# CI runs the same command a developer runs. Anything checked here that local verify does
+# not check is a failure the model cannot reproduce locally, and it will burn tokens
+# guessing at it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Restore (locked)
+        run: dotnet restore __SOLUTION__ --locked-mode
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Hook self-test
+        run: npm run hooks:selftest
+
+      - name: Integration tests
+        run: npm run verify:it

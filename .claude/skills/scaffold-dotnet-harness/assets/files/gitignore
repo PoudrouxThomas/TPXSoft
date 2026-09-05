@@ -1,0 +1,9 @@
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+*.nupkg
+.vs/
+node_modules/
+.env

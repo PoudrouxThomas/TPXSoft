@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    Central package management. Underrated for agent work: an agent cannot invent a
+    version in one project, and every project stays on one set of pins.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="__ASPNET__" />
+    <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="__ASPNET__" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="__ASPNET__" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="__EF__" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="__EF__" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="__NPGSQL__" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="__TESTSDK__" />
+    <PackageVersion Include="xunit" Version="__XUNIT__" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="__XUNITVS__" />
+    <PackageVersion Include="NetArchTest.Rules" Version="__NETARCH__" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="__TESTCONTAINERS__" />
+  </ItemGroup>
+
+</Project>
